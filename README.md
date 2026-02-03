@@ -2,8 +2,6 @@
 
 ![C++](https://img.shields.io/badge/C++-17-blue.svg)
 ![Qt](https://img.shields.io/badge/Qt-6.0-green.svg)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 
 Редактор изображений с расширенным функционалом, разработанный на C++ с использованием Qt Framework.
 
