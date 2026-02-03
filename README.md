@@ -1,7 +1,7 @@
 # Pixel - Фоторедактор
 
 ![C++](https://img.shields.io/badge/C++-17-blue.svg)
-![Qt](https://img.shields.io/badge/Qt-6.0-green.svg)
+![Qt](https://img.shields.io/badge/Qt-5.0-green.svg)
 
 Редактор изображений с расширенным функционалом, разработанный на C++ с использованием Qt Framework.
 
