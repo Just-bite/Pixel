@@ -12,6 +12,7 @@
 #include "infopannel.h"
 #include "contextpannel.h"
 #include "instrumentpannel.h"
+#include "palettepannel.h"
 
 #include "object.h"
 
@@ -35,5 +36,6 @@ private:
     InfoPannel* m_info_pannel_layout;
     ContextPannel* m_context_pannel_layout;
     InstrumentPannel* m_instrument_pannel_layout;
+    PalettePannel* m_palette_pannel_layout;
 };
 #endif // MAINWINDOW_H

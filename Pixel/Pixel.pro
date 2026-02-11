@@ -22,6 +22,7 @@ SOURCES += \
     instrumentpannel.cpp \
     main.cpp \
     mainwindow.cpp \
+    palettepannel.cpp \
     projectmanager.cpp
 
 HEADERS += \
@@ -33,6 +34,7 @@ HEADERS += \
     instrumentpannel.h \
     mainwindow.h \
     object.h \
+    palettepannel.h \
     project.h \
     projectmanager.h
 
