@@ -85,11 +85,11 @@ class Ellipse : public Shape
 public:
     Ellipse(const QPointF& center, qreal radius, QObject* parent = nullptr);
     Ellipse(qreal x, qreal y, qreal radius, QObject* parent = nullptr);
-    explicit Ellipse(QObject* parent = nullptr) {};
+    explicit Ellipse(QObject* parent = nullptr);
 
-    void draw(QPainter* painter) const override { painter->drawEllipse({0, 0}, 10, 10);};
-    bool contains(const QPointF& point) const override {};
-    QRectF boundingRect() const override {};
+    void draw(QPainter* painter) const override;
+    bool contains(const QPointF& point) const override;
+    QRectF boundingRect() const override;
 
     void setCenter(const QPointF& center);
     QPointF center() const;
