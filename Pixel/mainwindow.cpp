@@ -45,7 +45,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     //
     QWidget* palette_layers_pannel = new QWidget(workspace);
-   // palette_layers_pannel->setMaximumWidth(260);
     QVBoxLayout* palette_layers_pannel_layout = new QVBoxLayout(palette_layers_pannel);
     palette_layers_pannel->setStyleSheet("border: 2px solid #f3003f; border-radius: 5px;");
 
@@ -55,10 +54,8 @@ MainWindow::MainWindow(QWidget *parent)
     layers_pannel_layout->addWidget(filler_button3);
     layers_pannel->setStyleSheet("border: 2px solid #ff00ff; border-radius: 5px;");
 
-    QWidget* palette_pannel = new QWidget(workspace);
-    QVBoxLayout* palette_pannel_layout = new QVBoxLayout(palette_pannel);
-    QPushButton* filler_button5 = new QPushButton( "Filler button ", palette_pannel);
-    palette_pannel_layout->addWidget(filler_button5);
+    PalettePannel* palette_pannel = new PalettePannel(workspace);
+    m_palette_pannel_layout = new PalettePannel(palette_pannel);
     palette_pannel->setStyleSheet("border: 2px solid #f0400f; border-radius: 5px;");
 
     palette_layers_pannel_layout->addWidget(palette_pannel, 6);
