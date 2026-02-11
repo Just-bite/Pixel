@@ -1,6 +1,9 @@
 #include "layer.h"
 
-Layer::Layer(QObject* parent) : QObject(parent), m_visible(true), m_locked(false)
+Layer::Layer(QObject* parent)
+    : QObject(parent)
+    , m_visible(true)
+    , m_locked(false)
 {
 }
 
@@ -12,7 +15,8 @@ void Layer::addObject(Object* object)
 
 void Layer::draw(QPainter* painter) const
 {
-    if (!m_visible) return;
+    if (!m_visible)
+        return;
 
     for (const auto& obj : m_objects) {
         obj->draw(painter);

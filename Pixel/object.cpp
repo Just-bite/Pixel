@@ -24,4 +24,5 @@ void Ellipse::draw(QPainter* painter) const
 }
 
 bool Ellipse::contains(const QPointF& point) const { return false; /* TODO */ }
+
 QRectF Ellipse::boundingRect() const { return QRectF(); /* TODO */ }

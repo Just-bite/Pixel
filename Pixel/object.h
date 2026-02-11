@@ -51,13 +51,13 @@ public:
     QColor fillColor() const;
 
     void setStrokeColor(const QColor& color);
-    QColor strokeColor() const;
+    QColor getStrokeColor() const;
 
     void setStrokeWidth(float width);
-    float strokeWidth() const;
+    float getStrokeWidth() const;
 
     void setOpacity(float opacity);
-    float opacity() const;
+    float getOpacity() const;
 
 protected:
     QColor m_fillColor;
@@ -79,6 +79,7 @@ protected:
     bool m_filled;
 };
 
+
 class Ellipse : public Shape
 {
     Q_OBJECT
@@ -92,10 +93,10 @@ public:
     QRectF boundingRect() const override;
 
     void setCenter(const QPointF& center);
-    QPointF center() const;
+    QPointF getCenter() const;
 
     void setRadius(qreal radius);
-    qreal radius() const;
+    qreal getRadius() const;
 
 private:
     QPointF m_center;
@@ -114,13 +115,13 @@ public:
     QRectF boundingRect() const override {};
 
     void setRect(const QRectF& rect);
-    QRectF rect() const;
+    QRectF getRect() const;
 
     void setSize(const QSizeF& size);
-    QSizeF size() const;
+    QSizeF getSize() const;
 
     void setCornerRadius(qreal radius);
-    qreal cornerRadius() const;
+    qreal getCornerRadius() const;
 
 private:
     QRectF m_rect;
@@ -139,14 +140,13 @@ public:
     QRectF boundingRect() const override {};
 
     void setText(const QString& text);
-    QString text() const;
+    QString getText() const;
 
     void setFont(const QFont& font);
-    QFont font() const;
+    QFont getFont() const;
 
     void setAlignment(Qt::Alignment alignment);
-    Qt::Alignment alignment() const;
-
+    Qt::Alignment getAlignment() const;
 
 private:
     QString m_text;
@@ -166,10 +166,10 @@ public:
     QRectF boundingRect() const override {};
 
     void setStartPoint(const QPointF& point);
-    QPointF startPoint() const;
+    QPointF getStartPoint() const;
 
     void setEndPoint(const QPointF& point);
-    QPointF endPoint() const;
+    QPointF getEndPoint() const;
 
     void setLine(const QPointF& start, const QPointF& end);
 

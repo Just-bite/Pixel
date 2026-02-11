@@ -3,7 +3,6 @@
 InstrumentPannel::InstrumentPannel(QWidget* parent)
     : m_instrument_pannel_layout(new QVBoxLayout(parent))
 {
-
     m_instrument_pannel_layout->setContentsMargins(2,2,2,2);
     m_instrument_pannel_layout->setSpacing(2);
     fillInstumentIcon();
@@ -11,7 +10,6 @@ InstrumentPannel::InstrumentPannel(QWidget* parent)
     createButtonsArray(parent);
     setButtonsIcons();
     addInsruments();
-
 }
 
 const QVBoxLayout& InstrumentPannel::getLayout() const
@@ -32,10 +30,10 @@ void InstrumentPannel::fillInstumentIcon()
 
 void InstrumentPannel::createButtonsArray(QWidget* parent)
 {
-    for(size_t i = 0; i < 16; i++)
+    for(size_t i = 0; i < MAX_INSTRUMENTS_AMOUNT; i++)
     {
         QPushButton* button = new QPushButton(QString("%1").arg(i),parent);
-        button->setFixedSize(32,32);
+        button->setFixedSize(INSTURMENT_BTN_SIZE, INSTURMENT_BTN_SIZE);
         m_bttns_instruments.push_back(button);
     }
 }

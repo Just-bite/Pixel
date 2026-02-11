@@ -31,7 +31,8 @@ private:
     void setButtonsIcons();
     void addInsruments();
 
-    static constexpr int MAX_INSTRUMENTS_AMOUNT = 32;
+    static constexpr int MAX_INSTRUMENTS_AMOUNT = 16;
+    static constexpr int INSTURMENT_BTN_SIZE = 32;
     QVBoxLayout* m_instrument_pannel_layout;
 
     std::vector<QPushButton*> m_bttns_instruments;
