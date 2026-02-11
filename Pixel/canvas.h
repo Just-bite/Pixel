@@ -14,6 +14,7 @@ class Canvas : public QWidget
 
 public:
     explicit Canvas(QObject* parent = nullptr);
+    void addLayer(Layer* layer);
     void draw(QPainter* painter) const;
 
 private:

@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "layer.h"
+#include "object.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -27,11 +29,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     //
     QWidget* instrument_pannel = new QWidget(workspace);
-    //QVBoxLayout* instrument_pannel_layout = new QVBoxLayout(instrument_pannel);
     m_instrument_pannel_layout = new InstrumentPannel(instrument_pannel);
-   // QPushButton* filler_button2 = new QPushButton( "Filler button ",instrument_pannel);
-    //filler_button2->setFixedSize(20,20);
-    //instrument_pannel_layout->addWidget(filler_button2);
+
     instrument_pannel->setStyleSheet("border: 2px solid #ffff00; border-radius: 5px;");
     //
 
@@ -65,7 +64,6 @@ MainWindow::MainWindow(QWidget *parent)
     palette_layers_pannel_layout->addWidget(palette_pannel, 6);
     palette_layers_pannel_layout->addWidget(layers_pannel, 4);
 
-
     //
     workspace_layout->addWidget(instrument_pannel);
     workspace_layout->addWidget(m_view_main, 4);
@@ -87,6 +85,43 @@ MainWindow::MainWindow(QWidget *parent)
     // end main container config
 
     setCentralWidget(container_main);
+
+    {
+        m_canvas = new Canvas(this);
+
+        Layer* layer1 = new Layer(m_canvas);
+        Layer* layer2 = new Layer(m_canvas);
+
+        Ellipse* e1 = new Ellipse(QPointF(300, 300), 30, layer1);
+        Ellipse* e2 = new Ellipse(QPointF(260, 300), 60, layer2);
+
+        layer1->addObject(e1);
+        layer2->addObject(e2);
+
+        m_canvas->addLayer(layer1);
+        m_canvas->addLayer(layer2);
+    }
+
+    renderCanvas();
+}
+
+void MainWindow::renderCanvas()
+{
+    QRectF rect = m_scene_main->sceneRect();
+    QPixmap buffer(rect.size().toSize());
+
+    buffer.fill(Qt::white);
+
+    QPainter painter(&buffer);
+
+
+    if (m_canvas) {
+        m_canvas->draw(&painter);
+    }
+    painter.end();
+
+    m_scene_main->clear();
+    m_scene_main->addPixmap(buffer);
 }
 
 MainWindow::~MainWindow()

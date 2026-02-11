@@ -13,7 +13,7 @@
 #include "contextpannel.h"
 #include "instrumentpannel.h"
 
-#include "object.h"
+#include "canvas.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -28,6 +28,8 @@ public:
     ~MainWindow();
 
 private:
+    void renderCanvas();
+
     Ui::MainWindow *ui;
 
     QGraphicsScene* m_scene_main;
@@ -35,5 +37,7 @@ private:
     InfoPannel* m_info_pannel_layout;
     ContextPannel* m_context_pannel_layout;
     InstrumentPannel* m_instrument_pannel_layout;
+
+    Canvas* m_canvas;
 };
 #endif // MAINWINDOW_H

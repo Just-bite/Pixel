@@ -13,6 +13,7 @@ class Layer : public QObject
 public:
     explicit Layer(QObject* parent = nullptr);
     void draw(QPainter* painter) const;
+    void addObject(Object* object);
 
 private:
     bool m_visible;

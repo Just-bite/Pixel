@@ -17,11 +17,14 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     action.cpp \
+    canvas.cpp \
     contextpannel.cpp \
     infopannel.cpp \
     instrumentpannel.cpp \
+    layer.cpp \
     main.cpp \
     mainwindow.cpp \
+    object.cpp \
     projectmanager.cpp
 
 HEADERS += \
@@ -45,5 +48,4 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 RESOURCES += \
- \   # icons.qrc
-    icons.qrc
+    #icons.qrc
