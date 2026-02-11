@@ -4,11 +4,13 @@
 #include <QObject>
 #include <QPainter>
 
-/*class Object : public QObject
+class Object;
+
+class Object : public QObject
 {
     Q_OBJECT
 public:
-    explicit Object(QObject* parent = nullptr);
+    explicit Object(QObject* parent = nullptr) {};
     virtual ~Object() = default;
 
     virtual void draw(QPainter* painter) const = 0;
@@ -19,17 +21,17 @@ public:
     QPointF position() const;
 
     void setRotation(float angle);
-    float rotation() const;
+    float getRotation() const;
 
     void setScale(float scale);
-    float scale() const;
+    float getScale() const;
 
     void setVisible(bool visible);
     bool isVisible() const;
 
-    virtual void move(const QPointF& delta);
-    virtual void rotate(float angle);
-    virtual void scaleBy(float factor);
+    void move(const QPointF& delta);
+    void rotate(float angle);
+    void scaleBy(float factor);
 
 protected:
     QPointF m_position;
@@ -43,7 +45,7 @@ class StyleObject : public Object
 {
     Q_OBJECT
 public:
-    explicit StyleObject(QObject* parent = nullptr);
+    explicit StyleObject(QObject* parent = nullptr) {};
 
     void setFillColor(const QColor& color);
     QColor fillColor() const;
@@ -68,7 +70,7 @@ class Shape : public StyleObject
 {
     Q_OBJECT
 public:
-    explicit Shape(QObject* parent = nullptr);
+    explicit Shape(QObject* parent = nullptr) {};
 
     void setFilled(bool filled);
     bool isFilled() const;
@@ -83,10 +85,11 @@ class Ellipse : public Shape
 public:
     Ellipse(const QPointF& center, qreal radius, QObject* parent = nullptr);
     Ellipse(qreal x, qreal y, qreal radius, QObject* parent = nullptr);
+    explicit Ellipse(QObject* parent = nullptr) {};
 
-    void draw(QPainter* painter) const override;
-    bool contains(const QPointF& point) const override;
-    QRectF boundingRect() const override;
+    void draw(QPainter* painter) const override { painter->drawEllipse({0, 0}, 10, 10);};
+    bool contains(const QPointF& point) const override {};
+    QRectF boundingRect() const override {};
 
     void setCenter(const QPointF& center);
     QPointF center() const;
@@ -106,9 +109,9 @@ public:
     Rectangle(const QRectF& rect, QObject* parent = nullptr);
     Rectangle(qreal x, qreal y, qreal width, qreal height, QObject* parent = nullptr);
 
-    void draw(QPainter* painter) const override;
-    bool contains(const QPointF& point) const override;
-    QRectF boundingRect() const override;
+    void draw(QPainter* painter) const override {};
+    bool contains(const QPointF& point) const override {};
+    QRectF boundingRect() const override {};
 
     void setRect(const QRectF& rect);
     QRectF rect() const;
@@ -131,9 +134,9 @@ class Text : public StyleObject
 public:
     explicit Text(const QString& text = QString(), QObject* parent = nullptr);
 
-    void draw(QPainter* painter) const override;
-    bool contains(const QPointF& point) const override;
-    QRectF boundingRect() const override;
+    void draw(QPainter* painter) const override {};
+    bool contains(const QPointF& point) const override {};
+    QRectF boundingRect() const override {};
 
     void setText(const QString& text);
     QString text() const;
@@ -158,9 +161,9 @@ class Line : public StyleObject
 public:
     Line(const QPointF& start, const QPointF& end, QObject* parent = nullptr);
 
-    void draw(QPainter* painter) const override;
-    bool contains(const QPointF& point) const override;
-    QRectF boundingRect() const override;
+    void draw(QPainter* painter) const override {};
+    bool contains(const QPointF& point) const override {};
+    QRectF boundingRect() const override {};
 
     void setStartPoint(const QPointF& point);
     QPointF startPoint() const;
@@ -173,6 +176,7 @@ public:
 private:
     QPointF m_start;
     QPointF m_end;
-};*/
+};
+
 
 #endif // OBJECT_H

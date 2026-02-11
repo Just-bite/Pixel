@@ -38,6 +38,7 @@ MainWindow::MainWindow(QWidget *parent)
     //
     scene_main->setSceneRect(QRect(this->width()/ 7,this->height()/ 9,4 * this->width()/ 7,7* this->height()/ 9));
     scene_main->addRect(scene_main->sceneRect());
+
     view_main->setScene(scene_main);
     view_main->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     view_main->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
