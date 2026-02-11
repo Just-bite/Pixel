@@ -1,5 +1,8 @@
 <RCC>
     <qresource prefix="/application_icon">
         <file>main_icon.jpg</file>
+        <file>rubber.png</file>
+        <file>pencil.svg</file>
+        <file>scissors.jpg</file>
     </qresource>
 </RCC>

@@ -10,6 +10,7 @@
 
 #include "infopannel.h"
 #include "contextpannel.h"
+#include "instrumentpannel.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -30,5 +31,6 @@ private:
     QGraphicsView* view_main;
     InfoPannel* info_pannel_layout;
     ContextPannel* context_pannel_layout;
+    InstrumentPannel* instrument_pannel_layout;
 };
 #endif // MAINWINDOW_H

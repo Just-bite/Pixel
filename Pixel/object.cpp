@@ -1,6 +1,6 @@
-#include "object.h"
+/*#include "object.h"
 
 Object::Object()
 {
 
-}
+}*/
