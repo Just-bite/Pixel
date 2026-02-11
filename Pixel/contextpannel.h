@@ -12,7 +12,7 @@ class ContextPannel : public QWidget
     Q_OBJECT
 
 public:
-    ContextPannel(QWidget* parent = nullptr);
+    explicit ContextPannel(QWidget* parent = nullptr);
     const QHBoxLayout& getLayout() const;
 
 private:

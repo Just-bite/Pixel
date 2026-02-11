@@ -23,12 +23,15 @@ MainWindow::MainWindow(QWidget *parent)
     // start 2
     QWidget* workspace = new QWidget(container_main);
     QHBoxLayout* workspace_layout = new QHBoxLayout(workspace);
+    workspace_layout->setContentsMargins(1,1,1,1);
 
     //
     QWidget* instrument_pannel = new QWidget(workspace);
-    QVBoxLayout* instrument_pannel_layout = new QVBoxLayout(instrument_pannel);
-    QPushButton* filler_button2 = new QPushButton( "Filler button ",instrument_pannel);
-    instrument_pannel_layout->addWidget(filler_button2);
+    //QVBoxLayout* instrument_pannel_layout = new QVBoxLayout(instrument_pannel);
+    instrument_pannel_layout = new InstrumentPannel(instrument_pannel);
+   // QPushButton* filler_button2 = new QPushButton( "Filler button ",instrument_pannel);
+    //filler_button2->setFixedSize(20,20);
+    //instrument_pannel_layout->addWidget(filler_button2);
     instrument_pannel->setStyleSheet("border: 2px solid #ffff00; border-radius: 5px;");
     //
 
@@ -41,16 +44,31 @@ MainWindow::MainWindow(QWidget *parent)
     //
 
     //
-    QWidget* color_layers_pannel = new QWidget(workspace);
-    QVBoxLayout* color_layers_pannel_layout = new QVBoxLayout(color_layers_pannel);
-    QPushButton* filler_button3 = new QPushButton( "Filler button ", color_layers_pannel);
-    color_layers_pannel_layout->addWidget(filler_button3);
-    color_layers_pannel->setStyleSheet("border: 2px solid #ff00ff; border-radius: 5px;");
+    QWidget* palette_layers_pannel = new QWidget(workspace);
+   // palette_layers_pannel->setMaximumWidth(260);
+    QVBoxLayout* palette_layers_pannel_layout = new QVBoxLayout(palette_layers_pannel);
+    palette_layers_pannel->setStyleSheet("border: 2px solid #f3003f; border-radius: 5px;");
+
+    QWidget* layers_pannel = new QWidget(workspace);
+    QVBoxLayout* layers_pannel_layout = new QVBoxLayout(layers_pannel);
+    QPushButton* filler_button3 = new QPushButton( "Filler button ", layers_pannel);
+    layers_pannel_layout->addWidget(filler_button3);
+    layers_pannel->setStyleSheet("border: 2px solid #ff00ff; border-radius: 5px;");
+
+    QWidget* palette_pannel = new QWidget(workspace);
+    QVBoxLayout* palette_pannel_layout = new QVBoxLayout(palette_pannel);
+    QPushButton* filler_button5 = new QPushButton( "Filler button ", palette_pannel);
+    palette_pannel_layout->addWidget(filler_button5);
+    palette_pannel->setStyleSheet("border: 2px solid #f0400f; border-radius: 5px;");
+
+    palette_layers_pannel_layout->addWidget(palette_pannel, 6);
+    palette_layers_pannel_layout->addWidget(layers_pannel, 4);
+
 
     //
-    workspace_layout->addWidget(instrument_pannel, 1);
+    workspace_layout->addWidget(instrument_pannel);
     workspace_layout->addWidget(view_main, 4);
-    workspace_layout->addWidget(color_layers_pannel, 2);
+    workspace_layout->addWidget(palette_layers_pannel, 2);
 
     // end 2
 
@@ -61,8 +79,8 @@ MainWindow::MainWindow(QWidget *parent)
     // end 3
 
     container_layout->addWidget(context_pannel,1);
-    container_layout->addWidget(workspace,7);
-    container_layout->addWidget(info_pannel,1);
+    container_layout->addWidget(workspace,8);
+    container_layout->addWidget(info_pannel,0);
     container_layout->setMargin(0);
     container_layout->setSpacing(0);
     // end main container config

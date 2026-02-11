@@ -18,6 +18,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     contextpannel.cpp \
     infopannel.cpp \
+    instrumentpannel.cpp \
     main.cpp \
     mainwindow.cpp \
     object.cpp
@@ -25,6 +26,7 @@ SOURCES += \
 HEADERS += \
     contextpannel.h \
     infopannel.h \
+    instrumentpannel.h \
     mainwindow.h \
     object.h
 

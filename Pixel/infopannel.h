@@ -11,7 +11,7 @@ class InfoPannel : public QWidget
     Q_OBJECT
 
 public:
-    InfoPannel(std::pair<int, int> canvas_size, float scale = 0,  QWidget* parent = nullptr);
+    explicit InfoPannel(std::pair<int, int> canvas_size, float scale = 0,  QWidget* parent = nullptr);
     void setScale(float scale);
     void setCanvasSize(std::pair<int,int> canvas_size);
     const QHBoxLayout& getLayout() const;
