@@ -1,8 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "layer.h"
-#include "object.h"
-#include <QDebug>
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -22,7 +20,6 @@ MainWindow::MainWindow(QWidget *parent)
     // start 1
     QWidget* context_pannel = new QWidget(container_main);
     m_context_pannel_layout = new ContextPannel(context_pannel);
- qDebug() << "Meh";
     context_pannel->setStyleSheet("border: 2px solid #ff0000; border-radius: 5px;");
     // end 1
 
@@ -57,8 +54,18 @@ MainWindow::MainWindow(QWidget *parent)
     layers_pannel_layout->addWidget(filler_button3);
     layers_pannel->setStyleSheet("border: 2px solid #ff00ff; border-radius: 5px;");
 
-    PalettePannel* palette_pannel = new PalettePannel(workspace);
-    m_palette_pannel_layout = new PalettePannel(palette_pannel);
+    QWidget* palette_pannel = new QWidget(workspace);
+    QVBoxLayout* palette_pannel_layout = new QVBoxLayout(palette_pannel);
+    PalettePannel* palette = new PalettePannel(workspace);
+    QSlider* slider = new QSlider(Qt::Horizontal, this);
+    slider->setRange(0, 359);
+    slider->setValue(0);
+
+    palette_pannel_layout->addWidget(palette);
+    palette_pannel_layout->addWidget(slider);
+
+    connect(slider, &QSlider::valueChanged, palette, &PalettePannel::setHue);
+
     palette_pannel->setStyleSheet("border: 2px solid #f0400f; border-radius: 5px;");
 
     palette_layers_pannel_layout->addWidget(palette_pannel, 6);

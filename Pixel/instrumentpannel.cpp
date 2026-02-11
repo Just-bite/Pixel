@@ -19,20 +19,20 @@ const QVBoxLayout& InstrumentPannel::getLayout() const
 
 void InstrumentPannel::fillInstumentIcon()
 {
-    m_instrument_icon[InstrumentType::HAND] = {QIcon(":/application_icon/main_icon.jpg"), QString("Hand (H)")};
-    m_instrument_icon[InstrumentType::PENCIL] = {QIcon(":/application_icon/main_icon.jpg"), QString("Pencil (P)")};
+    m_instrument_icon[InstrumentType::HAND] = {QIcon(":/application_icon/hand.svg"), QString("Hand (H)")};
+    m_instrument_icon[InstrumentType::PENCIL] = {QIcon(":/application_icon/pencil.svg"), QString("Pencil (P)")};
     m_instrument_icon[InstrumentType::ERASER] = {QIcon(":/application_icon/rubber.png"), QString("Eraser (E)")};
-    m_instrument_icon[InstrumentType::SCISSORS] = {QIcon(":/application_icon/scissors.jpg"), QString("Scissors ()")};
-    m_instrument_icon[InstrumentType::FILL] = {QIcon(":/application_icon/main_icon.jpg"), QString("Fill (B)")};
-    m_instrument_icon[InstrumentType::POINTER] = {QIcon(":/application_icon/main_icon.jpg"), QString("Pointer (I)")};
-    m_instrument_icon[InstrumentType::FIGURE] = {QIcon(":/application_icon/main_icon.jpg"), QString("Figure (F)")};
+    m_instrument_icon[InstrumentType::SCISSORS] = {QIcon(":/application_icon/scissors.svg"), QString("Scissors ()")};
+    m_instrument_icon[InstrumentType::FILL] = {QIcon(":/application_icon/bucket.svg"), QString("Fill (B)")};
+    m_instrument_icon[InstrumentType::POINTER] = {QIcon(":/application_icon/arrow.svg"), QString("Pointer (I)")};
+    m_instrument_icon[InstrumentType::FIGURE] = {QIcon(":/application_icon/figure.svg"), QString("Figure (F)")};
 }
 
 void InstrumentPannel::createButtonsArray(QWidget* parent)
 {
     for(size_t i = 0; i < MAX_INSTRUMENTS_AMOUNT; i++)
     {
-        QPushButton* button = new QPushButton(QString("%1").arg(i),parent);
+        QPushButton* button = new QPushButton(/*QString("%1").arg(i),*/parent);
         button->setFixedSize(INSTURMENT_BTN_SIZE, INSTURMENT_BTN_SIZE);
         m_bttns_instruments.push_back(button);
     }
