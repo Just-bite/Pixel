@@ -15,7 +15,7 @@ void Canvas::addLayer(Layer* layer)
 void Canvas::newLayer()
 {
     Layer* l = new Layer(this);
-    l->setName(QString("Layer %1").arg(m_layers.size() + 1));
+    l->setName(QString("layer%1").arg(m_layers.size() + 1));
     m_layers.push_back(l);
 }
 
