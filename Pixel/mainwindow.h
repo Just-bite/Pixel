@@ -8,6 +8,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsItem>
+#include <QFileDialog>
 #include <QSlider>
 #include <QDebug>
 
@@ -21,6 +22,7 @@
 #include "layer.h"
 #include "object.h"
 
+#include "projectmanager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -40,6 +42,7 @@ public:
 private:
     void renderCanvas();
     void createMenuBar();
+    void openFile();
     Ui::MainWindow *ui;
 
     QGraphicsScene* m_scene_main;
@@ -51,6 +54,8 @@ private:
 
     Canvas* m_canvas;
     PalettePannel* m_palette_pannel_layout;
+
+    ProjectManager* m_project_manager;
 
 private slots:
     void onForceUpdateCanvas();
