@@ -1,8 +1,13 @@
 <RCC>
     <qresource prefix="/application_icon">
         <file>main_icon.jpg</file>
-        <file>rubber.png</file>
+        <file>arrow.svg</file>
+        <file>bucket.svg</file>
+        <file>hand.svg</file>
         <file>pencil.svg</file>
-        <file>scissors.jpg</file>
+        <file>rubber.png</file>
+        <file>scissors.svg</file>
+        <file>figure.svg</file>
+        <file>palette.svg</file>
     </qresource>
 </RCC>

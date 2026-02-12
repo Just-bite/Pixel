@@ -8,6 +8,8 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsItem>
+#include <QSlider>
+#include <QDebug>
 
 #include "infopannel.h"
 #include "contextpannel.h"
@@ -16,6 +18,9 @@
 #include "layerspannel.h"
 
 #include "canvas.h"
+#include "layer.h"
+#include "object.h"
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui
