@@ -12,8 +12,9 @@ LayerWidget::LayerWidget(QWidget* parent)
     m_eye_btn = new QPushButton("V");
     m_up_btn = new QPushButton("u");
     m_down_btn = new QPushButton("d");
+    m_delete_btn = new QPushButton("-");
 
-    for (QPushButton* b : {m_lock_btn, m_eye_btn, m_down_btn, m_up_btn})
+    for (QPushButton* b : {m_lock_btn, m_eye_btn, m_down_btn, m_up_btn, m_delete_btn})
     {
         b->setFixedSize(BTN_SIZE, BTN_SIZE);
     }
@@ -26,7 +27,8 @@ LayerWidget::LayerWidget(QWidget* parent)
     m_layout->addStretch();
     m_layout->addWidget(m_down_btn);
     m_layout->addWidget(m_up_btn);
-};
+    m_layout->addWidget(m_delete_btn);
+}
 
 
 
@@ -35,6 +37,10 @@ LayersPannel::LayersPannel(QWidget *parent, Canvas* canvas)
     , m_canvas_ptr(canvas)
 {
     m_main_layout = new QVBoxLayout(this);
+    m_new_layer_btn = new QPushButton("+");
+    m_new_layer_btn->setFixedSize(BTN_SIZE, BTN_SIZE);
+    m_main_layout->addWidget(m_new_layer_btn);
+
     updateLayers();
 }
 

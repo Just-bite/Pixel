@@ -12,6 +12,13 @@ void Canvas::addLayer(Layer* layer)
     m_layers.push_back(layer);
 }
 
+void Canvas::newLayer()
+{
+    Layer* l = new Layer(this);
+    l->setName(QString("Layer %1").arg(m_layers.size() + 1));
+    m_layers.push_back(l);
+}
+
 void Canvas::draw(QPainter* painter) const
 {
     for (const auto& layer : m_layers) {

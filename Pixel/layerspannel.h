@@ -30,12 +30,13 @@ protected:
     }
 
 private:
-    static constexpr int BTN_SIZE = 32;
+    static constexpr int BTN_SIZE = 20;
     QHBoxLayout* m_layout;
     QPushButton* m_lock_btn;
     QPushButton* m_eye_btn;
     QPushButton* m_up_btn;
     QPushButton* m_down_btn;
+    QPushButton* m_delete_btn;
     QLabel* m_layer_name;
 };
 
@@ -49,6 +50,8 @@ public:
 private:
     void updateLayers();
 
+    static constexpr int BTN_SIZE = 20;
+    QPushButton* m_new_layer_btn;
     Canvas* m_canvas_ptr;
     QVBoxLayout* m_main_layout;
     std::vector<LayerWidget*> m_layers;

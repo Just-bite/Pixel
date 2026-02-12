@@ -15,6 +15,7 @@ class Canvas : public QWidget
 public:
     explicit Canvas(QObject* parent = nullptr);
     void addLayer(Layer* layer);
+    void newLayer();
     void draw(QPainter* painter) const;
 
     std::vector<LayerInfo> getLayersInfo() const;
@@ -24,7 +25,7 @@ private:
     Layer* m_selected;
 
 public slots:
-    void paintEvent(QPaintEvent* event) const {};
+    void paintEvent(QPaintEvent* event) const {}
 };
 
 #endif // CANVAS_H
