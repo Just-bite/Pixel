@@ -1,12 +1,20 @@
 #include "layerspannel.h"
 
 #include <QDebug>
+#include <QScrollArea>
+
+// --- LayerWidget ---
 
 LayerWidget::LayerWidget(QWidget* parent)
     : QWidget(parent)
 {
+    setFixedHeight(32);
+
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
     m_layout = new QHBoxLayout(this);
     m_layout->setSpacing(3);
+    m_layout->setContentsMargins(2, 2, 2, 2);
 
     m_lock_btn = new QPushButton("L");
     m_eye_btn = new QPushButton("V");
@@ -24,7 +32,9 @@ LayerWidget::LayerWidget(QWidget* parent)
     m_layout->addWidget(m_lock_btn);
     m_layout->addWidget(m_eye_btn);
     m_layout->addWidget(m_layer_name);
+
     m_layout->addStretch();
+
     m_layout->addWidget(m_down_btn);
     m_layout->addWidget(m_up_btn);
     m_layout->addWidget(m_delete_btn);
@@ -45,16 +55,32 @@ void LayerWidget::onDeleteClicked()
     emit deleteClicked();
 }
 
-// LayersPannel
+// --- LayersPannel ---
 
 LayersPannel::LayersPannel(QWidget *parent, Canvas* canvas)
     : QWidget(parent)
     , m_canvas_ptr(canvas)
 {
     m_main_layout = new QVBoxLayout(this);
+    m_main_layout->setContentsMargins(0, 0, 0, 0);
+
     m_new_layer_btn = new QPushButton("+");
     m_new_layer_btn->setFixedSize(BTN_SIZE, BTN_SIZE);
     m_main_layout->addWidget(m_new_layer_btn);
+
+    QScrollArea* scrollArea = new QScrollArea(this);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+
+    QWidget* scrollContent = new QWidget();
+    m_layers_layout = new QVBoxLayout(scrollContent);
+
+    m_layers_layout->setAlignment(Qt::AlignTop);
+    m_layers_layout->setContentsMargins(2, 2, 2, 2);
+    m_layers_layout->setSpacing(2);
+
+    scrollArea->setWidget(scrollContent);
+    m_main_layout->addWidget(scrollArea);
 
     updateLayers();
     connect(m_new_layer_btn, &QPushButton::clicked, this, &LayersPannel::onNewLayerClicked);
@@ -69,7 +95,7 @@ void LayersPannel::updateLayers()
 
     for (LayerWidget* lw : m_layers)
     {
-        m_main_layout->removeWidget(lw);
+        m_layers_layout->removeWidget(lw);
         delete lw;
     }
     m_layers.clear();
@@ -81,11 +107,13 @@ void LayersPannel::updateLayers()
     {
         LayerWidget* lw = new LayerWidget(this);
         lw->setName(i->name);
-        lw->setIndex(i - info.crbegin());
+        int index = info.size() - int(i - info.crbegin() + 1);
+        lw->setIndex(index);
         connect(lw, &LayerWidget::deleteClicked, this, &LayersPannel::onLayerDeleteClicked);
 
         m_layers.push_back(lw);
-        m_main_layout->addWidget(lw);
+
+        m_layers_layout->addWidget(lw);
     }
 }
 

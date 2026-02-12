@@ -8,9 +8,7 @@
 #include <QLabel>
 #include <QStyleOption>
 #include <QPainter>
-
 #include <vector>
-
 #include "canvas.h"
 
 class LayerWidget : public QWidget
@@ -20,7 +18,6 @@ public:
     explicit LayerWidget(QWidget* parent = nullptr);
 
     void setName(const QString& name) { m_layer_name->setText(name); }
-
     void setIndex(int id) { m_index = id; }
     int getIndex() { return m_index; }
 
@@ -40,7 +37,6 @@ private:
 
 signals:
     void deleteClicked();
-
 private slots:
     void onDeleteClicked();
 };
@@ -48,7 +44,7 @@ private slots:
 
 class LayersPannel : public QWidget
 {
-Q_OBJECT
+    Q_OBJECT
 public:
     explicit LayersPannel(QWidget* parent = nullptr, Canvas* canvas = nullptr);
 
@@ -58,7 +54,10 @@ private:
     static constexpr int BTN_SIZE = 20;
     QPushButton* m_new_layer_btn;
     Canvas* m_canvas_ptr;
-    QVBoxLayout* m_main_layout;
+
+    QVBoxLayout* m_main_layout;   // Главный лэйаут всей панели
+    QVBoxLayout* m_layers_layout; // Лэйаут внутри скролла (для списка слоев)
+
     std::vector<LayerWidget*> m_layers;
 
 signals:

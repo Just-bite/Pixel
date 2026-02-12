@@ -69,8 +69,7 @@ MainWindow::MainWindow(QWidget *parent)
         renderCanvas();
     }
 
-    QWidget* layers_w = new QWidget(workspace);
-    m_layers_pannel = new LayersPannel(layers_w, m_canvas);
+    m_layers_pannel = new LayersPannel(palette_layers_pannel, m_canvas);
     m_layers_pannel->setStyleSheet("border: 2px solid #ff00ff; border-radius: 5px;");
 
     PalettePannel* palette_pannel = new PalettePannel(workspace);
@@ -78,7 +77,7 @@ MainWindow::MainWindow(QWidget *parent)
     palette_pannel->setStyleSheet("border: 2px solid #f0400f; border-radius: 5px;");
 
     palette_layers_pannel_layout->addWidget(palette_pannel, 6);
-    palette_layers_pannel_layout->addWidget(layers_w, 4);
+    palette_layers_pannel_layout->addWidget(m_layers_pannel, 4);
 
     //
     workspace_layout->addWidget(instrument_pannel);
