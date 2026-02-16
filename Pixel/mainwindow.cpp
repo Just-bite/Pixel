@@ -51,6 +51,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     {
         m_canvas = new Canvas();
+        m_canvas->setScene(m_scene_main);
 
         Layer* layer1 = new Layer("layer1", m_canvas);
         Layer* layer2 = new Layer("layer2", m_canvas);
@@ -64,7 +65,7 @@ MainWindow::MainWindow(QWidget *parent)
         m_canvas->addLayer(layer1);
         m_canvas->addLayer(layer2);
 
-        renderCanvas();
+        m_canvas->renderCanvas();
     }
 
     m_layers_pannel = new LayersPannel(palette_layers_pannel, m_canvas);
@@ -135,29 +136,6 @@ void MainWindow::createMenuBar()
 
     QMenu* help_menu = menu_bar->addMenu("&Help");
     help_menu->addAction("&Sos me die");
-}
-
-void MainWindow::renderCanvas()
-{
-    QRectF rect = m_scene_main->sceneRect();
-    QPixmap buffer(rect.size().toSize());
-
-    buffer.fill(Qt::white);
-
-    QPainter painter(&buffer);
-
-    if (m_canvas)
-        m_canvas->draw(&painter);
-
-    painter.end();
-
-    m_scene_main->clear();
-    m_scene_main->addPixmap(buffer);
-}
-
-void MainWindow::onForceUpdateCanvas()
-{
-    renderCanvas();
 }
 
 MainWindow::~MainWindow()

@@ -37,8 +37,15 @@ private:
 
 signals:
     void deleteClicked();
+    void upClicked();
+    void downClicked();
+    void layerClicked();
+
 private slots:
     void onDeleteClicked();
+    void onUpClicked();
+    void onDownClicked();
+    void onLayerClicked();
 };
 
 
@@ -50,22 +57,28 @@ public:
 
 private:
     void updateLayers();
-
+    void moveLayer(int id, int shift);
     static constexpr int BTN_SIZE = 20;
     QPushButton* m_new_layer_btn;
     Canvas* m_canvas_ptr;
 
-    QVBoxLayout* m_main_layout;   // Главный лэйаут всей панели
-    QVBoxLayout* m_layers_layout; // Лэйаут внутри скролла (для списка слоев)
+    QVBoxLayout* m_main_layout;
+    QVBoxLayout* m_layers_layout;
 
     std::vector<LayerWidget*> m_layers;
 
 signals:
     void deleteLayerClicked();
+    void layerUpClicked();
+    void layerDownClicked();
+    void layerClicked();
 
 private slots:
     void onLayerDeleteClicked();
     void onNewLayerClicked();
+    void onLayerUpClicked();
+    void onLayerDownClicked();
+    void onLayerClicked();
 };
 
 #endif // LAYERSPANNEL_H

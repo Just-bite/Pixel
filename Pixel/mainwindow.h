@@ -38,12 +38,12 @@ public:
     ~MainWindow();
 
 private:
-    void renderCanvas();
     void createMenuBar();
     Ui::MainWindow *ui;
 
     QGraphicsScene* m_scene_main;
     QGraphicsView* m_view_main;
+
     InfoPannel* m_info_pannel_layout;
     ContextPannel* m_context_pannel_layout;
     InstrumentPannel* m_instrument_pannel_layout;
@@ -53,6 +53,6 @@ private:
     PalettePannel* m_palette_pannel_layout;
 
 private slots:
-    void onForceUpdateCanvas();
+
 };
 #endif // MAINWINDOW_H
