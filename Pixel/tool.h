@@ -33,7 +33,8 @@ public:
 
     void actOnSelectedArea(Canvas* canvas, ToolActArg arg) override
     {
-        Ellipse* el = new Ellipse({100, 100}, 20, nullptr);
+        Ellipse* el = new Ellipse(arg.first, 20, nullptr);
+        el->setFillColor(Qt::cyan);
         canvas->addObjectToSelectedLayer(el);
     }
 };

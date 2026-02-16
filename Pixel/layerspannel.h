@@ -21,8 +21,12 @@ public:
     void setIndex(int id) { m_index = id; }
     int getIndex() { return m_index; }
 
+    void setSelected(bool selected);
+    bool isSelected() const { return m_is_selected; }
+
 protected:
     void paintEvent(QPaintEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
 
 private:
     static constexpr int BTN_SIZE = 20;
@@ -35,6 +39,7 @@ private:
     QLabel* m_layer_name;
     int m_index;
 
+    bool m_is_selected = false;
 signals:
     void deleteClicked();
     void upClicked();
@@ -45,7 +50,6 @@ private slots:
     void onDeleteClicked();
     void onUpClicked();
     void onDownClicked();
-    void onLayerClicked();
 };
 
 
@@ -58,6 +62,8 @@ public:
 private:
     void updateLayers();
     void moveLayer(int id, int shift);
+    void refreshSelectionVisuals(int selectedIndex);
+
     static constexpr int BTN_SIZE = 20;
     QPushButton* m_new_layer_btn;
     Canvas* m_canvas_ptr;

@@ -27,7 +27,7 @@ void Canvas::addLayer(Layer* layer)
 
     if (!m_selected)
     {
-        m_selected = layer;
+        selectLayer(0);
     }
 }
 
@@ -111,6 +111,9 @@ void Canvas::moveLayer(int id, int shift)
     auto temp = m_layers[id];
     m_layers[id] = m_layers[other_id];
     m_layers[other_id] = temp;
+
+    m_selected_index += shift;
+    m_selected = m_layers[m_selected_index];
 }
 
 void Canvas::selectLayer(int id)
@@ -120,7 +123,7 @@ void Canvas::selectLayer(int id)
         qDebug() << "err: trying to select layer " << id;
         return;
     }
-
+    m_selected_index = id;
     m_selected = m_layers[id];
 }
 
