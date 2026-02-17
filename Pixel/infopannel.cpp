@@ -27,6 +27,7 @@ InfoPannel::InfoPannel(std::pair<int, int> canvas_size, float scale, QWidget* pa
 void InfoPannel::setCanvasSize(std::pair<int,int> canvas_size)
 {
     this->m_canvas_size = canvas_size;
+     updateDisplay();
 }
 
 const QHBoxLayout& InfoPannel::getLayout() const
@@ -37,4 +38,36 @@ const QHBoxLayout& InfoPannel::getLayout() const
 void InfoPannel::setScale(float scale)
 {
     this->m_scale = scale;
+    updateDisplay();
 }
+
+void InfoPannel::updateDisplay()
+{
+    if (m_canvas_size_label) {
+        m_canvas_size_label->setText(
+            QString("Canvas size: %1 x %2").arg(m_canvas_size.first).arg(m_canvas_size.second)
+        );
+    }
+
+    if (m_scale_edit) {
+        m_scale_edit->setText(QString::number(m_scale * 100, 'f', 1));
+    }
+}
+
+
+void InfoPannel::updateCanvasSizeDisplay(int width, int height)
+{
+    if (m_canvas_size_label) {
+        m_canvas_size_label->setText(
+            QString("Canvas size: %1 x %2").arg(width).arg(height)
+        );
+    }
+}
+
+void InfoPannel::updateScaleDisplay(float scale)
+{
+    if (m_scale_edit)
+        m_scale_edit->setText(QString::number(scale * 100, 'f', 1));
+}
+
+

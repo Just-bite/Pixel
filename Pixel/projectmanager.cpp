@@ -2,11 +2,6 @@
 
 #include <QDebug>
 
-ProjectManager::ProjectManager()
-    : m_selected_project(nullptr)
-{
-}
-
 void ProjectManager::createProject()
 {
     Project* project = new Project();
@@ -24,6 +19,7 @@ Canvas* ProjectManager::GetCurrentCanvas()
         return nullptr;
     }
     return m_selected_project->GetCanvas();
+}
 ProjectManager::ProjectManager(QWidget* parent)
     : QWidget(parent)
 {

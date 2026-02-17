@@ -1,7 +1,8 @@
 #include "instrumentpannel.h"
 
-InstrumentPannel::InstrumentPannel(QWidget* parent)
+InstrumentPannel::InstrumentPannel(QWidget* parent/*, ProjectManager* manager*/)
     : m_instrument_pannel_layout(new QVBoxLayout(parent))
+    //, m_project_manager(manager)
 {
     m_instrument_pannel_layout->setContentsMargins(2,2,2,2);
     m_instrument_pannel_layout->setSpacing(2);
@@ -34,9 +35,7 @@ void InstrumentPannel::createButtonsArray(QWidget* parent)
     {
         QPushButton* button = new QPushButton(/*QString("%1").arg(i),*/parent);
         button->setFixedSize(INSTURMENT_BTN_SIZE, INSTURMENT_BTN_SIZE);
-        connect(button,&QPushButton::clicked,parent,[](){
-            //ContextPannel::set
-        });
+        //connect(button,&QPushButton::clicked,mana
         m_bttns_instruments.push_back(button);
     }
 }

@@ -8,6 +8,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsItem>
+#include <QResizeEvent>
 #include <QFileDialog>
 #include <QSlider>
 #include <QDebug>
@@ -39,7 +40,9 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 private:
     void createMenuBar();
     void openFile();
@@ -57,6 +60,7 @@ private:
     ProjectManager* m_project_manager;
 
 private slots:
+    void updateInfoPanel();
 
 };
 #endif // MAINWINDOW_H

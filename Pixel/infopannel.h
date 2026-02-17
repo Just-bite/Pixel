@@ -14,6 +14,8 @@ public:
     explicit InfoPannel(std::pair<int, int> canvas_size, float scale = 0,  QWidget* parent = nullptr);
     void setScale(float scale);
     void setCanvasSize(std::pair<int,int> canvas_size);
+    void updateCanvasSizeDisplay(int width, int height);
+    void updateScaleDisplay(float scale);
     const QHBoxLayout& getLayout() const;
 
 private:
@@ -25,6 +27,9 @@ private:
     QLabel* m_canvas_size_label;
     QHBoxLayout* m_info_pannel_layout;
     float m_scale;
+
+public slots:
+    void updateDisplay();
 
 };
 

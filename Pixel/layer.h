@@ -38,6 +38,8 @@ public:
 
     LayerInfo getInfo() const;
 
+
+
 private:
     bool m_visible;
     bool m_locked;

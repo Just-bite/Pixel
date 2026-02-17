@@ -22,7 +22,7 @@ class Tool
 public:
     Tool();
 
-    virtual void actOnSelectedArea(Canvas* canvas, ToolActArg arg);
+    virtual void actOnSelectedArea(Canvas* canvas, ToolActArg arg) = 0;
 };
 
 

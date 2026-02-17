@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+///НЕ УДАЛЯТЬ ЗАКОММЕНТИРОВАННЫЕ СТИЛИ, это для отладки!!!!!!!///
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -14,7 +15,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     createMenuBar();
 
-
     // start main container config
     QWidget* container_main = new QWidget(this);
     QVBoxLayout* container_layout = new QVBoxLayout(container_main);
@@ -23,7 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
     // start 1
     QWidget* context_pannel = new QWidget(container_main);
     m_context_pannel_layout = new ContextPannel(context_pannel);
-    context_pannel->setStyleSheet("border: 2px solid #ff0000; border-radius: 5px;");
+    //context_pannel->setStyleSheet("border: 2px solid #ff0000; border-radius: 5px;");
     // end 1
 
     // start 2
@@ -34,23 +34,26 @@ MainWindow::MainWindow(QWidget *parent)
     //
     QWidget* instrument_pannel = new QWidget(workspace);
     m_instrument_pannel_layout = new InstrumentPannel(instrument_pannel);
-    instrument_pannel->setStyleSheet("border: 2px solid #ffff00; border-radius: 5px;");
+    //instrument_pannel->setStyleSheet("border: 2px solid #ffff00; border-radius: 5px;");
     //
 
     //
     m_scene_main->setSceneRect(QRect(this->width()/ 7,this->height()/ 9,4 * this->width()/ 7,7* this->height()/ 9));
-    m_scene_main->addRect(m_scene_main->sceneRect());
+    //m_scene_main->addRect(m_scene_main->sceneRect());
 
+    m_view_main->installEventFilter(this);
+    m_view_main->viewport()->installEventFilter(this);
     m_view_main->setScene(m_scene_main);
     m_view_main->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     m_view_main->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
+    m_view_main->setDragMode(QGraphicsView::NoDrag);
     //
 
     //
     QWidget* palette_layers_pannel = new QWidget(workspace);
     QVBoxLayout* palette_layers_pannel_layout = new QVBoxLayout(palette_layers_pannel);
-    palette_layers_pannel->setStyleSheet("border: 2px solid #f3003f; border-radius: 5px;");
-
+    palette_layers_pannel->setStyleSheet("border: 1px solid #555555; ");
+    palette_layers_pannel->setMaximumWidth(400);
 
     m_project_manager = new ProjectManager();
     m_project_manager->createProject();
@@ -70,7 +73,7 @@ MainWindow::MainWindow(QWidget *parent)
     canvas->renderCanvas();
 
     m_layers_pannel = new LayersPannel(palette_layers_pannel, canvas);
-    m_layers_pannel->setStyleSheet("border: 2px solid #ff00ff; border-radius: 5px;");
+    //m_layers_pannel->setStyleSheet("border: 2px solid #ff00ff; border-radius: 5px;");
 
     QWidget* palette_pannel = new QWidget(workspace);
     QVBoxLayout* palette_pannel_layout = new QVBoxLayout(palette_pannel);
@@ -84,10 +87,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(slider, &QSlider::valueChanged, palette, &PalettePannel::setHue);
 
-    palette_pannel->setStyleSheet("border: 2px solid #f0400f; border-radius: 5px;");
+    //palette_pannel->setStyleSheet("border: 2px solid #f0400f; border-radius: 5px;");
 
-    palette_layers_pannel_layout->addWidget(palette_pannel, 6);
-    palette_layers_pannel_layout->addWidget(m_layers_pannel, 4);
+    palette_layers_pannel_layout->addWidget(palette_pannel, 5);
+    palette_layers_pannel_layout->addWidget(m_layers_pannel, 5);
     //
 
     workspace_layout->addWidget(instrument_pannel);
@@ -98,7 +101,7 @@ MainWindow::MainWindow(QWidget *parent)
     // start 3
     QWidget* info_pannel = new QWidget(container_main);
     m_info_pannel_layout = new InfoPannel({m_scene_main->width(),m_scene_main->height()}, 1.0f, info_pannel);
-    info_pannel->setStyleSheet("border: 2px solid #00ffff; border-radius: 5px;");
+    //info_pannel->setStyleSheet("border: 2px solid #00ffff; border-radius: 5px;");
     // end 3
 
     container_layout->addWidget(context_pannel,1);
@@ -109,6 +112,7 @@ MainWindow::MainWindow(QWidget *parent)
     // end main container config
 
     setCentralWidget(container_main);
+    updateInfoPanel();
 }
 
 void MainWindow::createMenuBar()
@@ -142,11 +146,6 @@ void MainWindow::createMenuBar()
     connect(print_action, &QAction::triggered, m_project_manager, &ProjectManager::printFile);
     print_action->setShortcut(QKeySequence::Print);
 
-
-
-
-
-
     QMenu* edit_menu = menu_bar->addMenu("&Edit");
     edit_menu->addAction("&Undo");
     edit_menu->addAction("&Redo");
@@ -161,29 +160,59 @@ void MainWindow::createMenuBar()
     help_menu->addAction("&Sos me die");
 }
 
-void MainWindow::renderCanvas()
+bool MainWindow::eventFilter(QObject* obj, QEvent* event)
 {
-    QRectF rect = m_scene_main->sceneRect();
-    QPixmap buffer(rect.size().toSize());
+    if (obj == m_view_main || obj == m_view_main->viewport()) {
 
-    buffer.fill(Qt::white);
+        switch(event->type())
+        {
+            case QEvent::Wheel: {
+                QWheelEvent* wheelEvent = static_cast<QWheelEvent*>(event);
 
-    QPainter painter(&buffer);
+                m_view_main->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
 
-    if (m_canvas)
-        m_canvas->draw(&painter);
+                int delta = wheelEvent->angleDelta().y();
+                double factor = (delta > 0) ? 1.15 : (1.0 / 1.15);
+                m_view_main->scale(factor, factor);
+                updateInfoPanel();
+                return true;
+            }
+        }
 
-    painter.end();
+    }
 
-    m_scene_main->clear();
-    m_scene_main->addPixmap(buffer);
+    return QMainWindow::eventFilter(obj, event);
 }
 
-void MainWindow::onForceUpdateCanvas()
+void MainWindow::resizeEvent(QResizeEvent* event)
 {
-    renderCanvas();
+    QMainWindow::resizeEvent(event);
+
+    QRect viewportRect = m_view_main->viewport()->rect();
+    m_scene_main->setSceneRect(0, 0, viewportRect.width(), viewportRect.height());
+    Canvas* canvas = m_project_manager->GetCurrentCanvas();
+    canvas->setScene(m_scene_main);
+    canvas ->renderCanvas();
+    updateInfoPanel();
 }
 
+void MainWindow::updateInfoPanel()
+{
+    if (!m_info_pannel_layout) return;
+
+    QRectF sceneRect = m_scene_main->sceneRect();
+    int width = static_cast<int>(sceneRect.width());
+    int height = static_cast<int>(sceneRect.height());
+
+    m_info_pannel_layout->setCanvasSize({width, height});
+    m_info_pannel_layout->updateCanvasSizeDisplay(width, height);
+
+    qreal scaleX = m_view_main->transform().m11(); // масштаб по X
+    float scale = static_cast<float>(scaleX);
+
+    m_info_pannel_layout->setScale(scale);
+    m_info_pannel_layout->updateScaleDisplay(scale);
+}
 
 MainWindow::~MainWindow()
 {

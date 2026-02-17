@@ -51,13 +51,14 @@ void LayerWidget::paintEvent(QPaintEvent *event)
     opt.init(this);
     QPainter p(this);
 
-    // Если слой выбран, рисуем фон цветом выделения
-    if (m_is_selected) {
-        // Цвет: синий с прозрачностью (R, G, B, Alpha)
+    if (m_is_selected)
         p.fillRect(rect(), QColor(60, 140, 220, 100));
+    else {
+        QStyleOption opt;
+        opt.init(this);
+        style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
     }
 
-    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
 }
 
 void LayerWidget::setSelected(bool selected)
@@ -102,7 +103,7 @@ LayersPannel::LayersPannel(QWidget *parent, Canvas* canvas)
     m_main_layout->setContentsMargins(0, 0, 0, 0);
 
     m_new_layer_btn = new QPushButton("+");
-    m_new_layer_btn->setFixedSize(BTN_SIZE, BTN_SIZE);
+    m_new_layer_btn->setFixedSize(BTN_SIZE + 10, BTN_SIZE + 5);
     m_main_layout->addWidget(m_new_layer_btn);
 
     QScrollArea* scrollArea = new QScrollArea(this);

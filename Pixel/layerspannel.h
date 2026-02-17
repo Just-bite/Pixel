@@ -29,7 +29,7 @@ protected:
     void mousePressEvent(QMouseEvent *event) override;
 
 private:
-    static constexpr int BTN_SIZE = 20;
+    static constexpr int BTN_SIZE = 30;
     QHBoxLayout* m_layout;
     QPushButton* m_lock_btn;
     QPushButton* m_eye_btn;

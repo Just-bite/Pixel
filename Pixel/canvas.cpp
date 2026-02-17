@@ -112,7 +112,7 @@ void Canvas::moveLayer(int id, int shift)
     m_layers[id] = m_layers[other_id];
     m_layers[other_id] = temp;
 
-    m_selected_index += shift;
+    m_selected_index = (m_selected_index + shift) % m_layers.size();
     m_selected = m_layers[m_selected_index];
 }
 

@@ -8,8 +8,6 @@ class ProjectManager : public QWidget
 {
     Q_OBJECT
 public:
-    ProjectManager();
-
     Canvas* GetCurrentCanvas();
     void createProject();
     explicit ProjectManager(QWidget* parent = nullptr);
