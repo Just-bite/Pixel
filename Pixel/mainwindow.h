@@ -21,6 +21,7 @@
 #include "canvas.h"
 #include "layer.h"
 #include "object.h"
+#include "projectmanager.h"
 
 #include "projectmanager.h"
 
@@ -40,24 +41,22 @@ public:
     ~MainWindow();
 
 private:
-    void renderCanvas();
     void createMenuBar();
     void openFile();
     Ui::MainWindow *ui;
 
     QGraphicsScene* m_scene_main;
     QGraphicsView* m_view_main;
+
     InfoPannel* m_info_pannel_layout;
     ContextPannel* m_context_pannel_layout;
     InstrumentPannel* m_instrument_pannel_layout;
     LayersPannel* m_layers_pannel;
-
-    Canvas* m_canvas;
     PalettePannel* m_palette_pannel_layout;
 
     ProjectManager* m_project_manager;
 
 private slots:
-    void onForceUpdateCanvas();
+
 };
 #endif // MAINWINDOW_H

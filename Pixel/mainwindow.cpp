@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 
 
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -50,25 +51,25 @@ MainWindow::MainWindow(QWidget *parent)
     QVBoxLayout* palette_layers_pannel_layout = new QVBoxLayout(palette_layers_pannel);
     palette_layers_pannel->setStyleSheet("border: 2px solid #f3003f; border-radius: 5px;");
 
-    {
-        m_canvas = new Canvas();
 
-        Layer* layer1 = new Layer("layer1", m_canvas);
-        Layer* layer2 = new Layer("layer2", m_canvas);
+    m_project_manager = new ProjectManager();
+    m_project_manager->createProject();
+    Canvas* canvas = m_project_manager->GetCurrentCanvas();
+    canvas->setScene(m_scene_main);
+    Layer* layer1 = new Layer("layer1", canvas);
+    Layer* layer2 = new Layer("layer2", canvas);
+    Ellipse* e1 = new Ellipse(QPointF(300, 300), 30, layer1);
+    Ellipse* e2 = new Ellipse(QPointF(260, 300), 60, layer2);
 
-        Ellipse* e1 = new Ellipse(QPointF(300, 300), 30, layer1);
-        Ellipse* e2 = new Ellipse(QPointF(260, 300), 60, layer2);
+    layer1->addObject(e1);
+    layer2->addObject(e2);
 
-        layer1->addObject(e1);
-        layer2->addObject(e2);
+    canvas->addLayer(layer1);
+    canvas->addLayer(layer2);
 
-        m_canvas->addLayer(layer1);
-        m_canvas->addLayer(layer2);
+    canvas->renderCanvas();
 
-        renderCanvas();
-    }
-
-    m_layers_pannel = new LayersPannel(palette_layers_pannel, m_canvas);
+    m_layers_pannel = new LayersPannel(palette_layers_pannel, canvas);
     m_layers_pannel->setStyleSheet("border: 2px solid #ff00ff; border-radius: 5px;");
 
     QWidget* palette_pannel = new QWidget(workspace);
@@ -108,7 +109,6 @@ MainWindow::MainWindow(QWidget *parent)
     // end main container config
 
     setCentralWidget(container_main);
-
 }
 
 void MainWindow::createMenuBar()

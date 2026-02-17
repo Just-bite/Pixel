@@ -8,6 +8,10 @@ class ProjectManager : public QWidget
 {
     Q_OBJECT
 public:
+    ProjectManager();
+
+    Canvas* GetCurrentCanvas();
+    void createProject();
     explicit ProjectManager(QWidget* parent = nullptr);
 
 public slots:
@@ -19,6 +23,7 @@ public slots:
     bool closeFile();
 
 private:
+
     std::vector<Project*> m_projects;
     Project* m_selected_project;
     FileManager* m_file_manager;

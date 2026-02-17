@@ -28,7 +28,9 @@ SOURCES += \
     mainwindow.cpp \
     object.cpp \
     palettepannel.cpp \
-    projectmanager.cpp
+    project.cpp \
+    projectmanager.cpp \
+    tool.cpp
 
 HEADERS += \
     action.h \
@@ -43,7 +45,8 @@ HEADERS += \
     object.h \
     palettepannel.h \
     project.h \
-    projectmanager.h
+    projectmanager.h \
+    tool.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

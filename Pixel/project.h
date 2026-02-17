@@ -6,13 +6,15 @@
 
 #include "canvas.h"
 
-
 class Project : public QObject
 {
     Q_OBJECT
 
 public:
     Project();
+    ~Project();
+
+    Canvas* GetCanvas() {return m_canvas;}
 
 private:
     Canvas* m_canvas;

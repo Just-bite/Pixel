@@ -2,6 +2,7 @@
 
 #include <QDebug>
 #include <QScrollArea>
+#include <QMouseEvent>
 
 // --- LayerWidget ---
 
@@ -40,6 +41,8 @@ LayerWidget::LayerWidget(QWidget* parent)
     m_layout->addWidget(m_delete_btn);
 
     connect(m_delete_btn, &QPushButton::clicked, this, &LayerWidget::onDeleteClicked);
+    connect(m_up_btn, &QPushButton::clicked, this, &LayerWidget::onUpClicked);
+    connect(m_down_btn, &QPushButton::clicked, this, &LayerWidget::onDownClicked);
 }
 
 void LayerWidget::paintEvent(QPaintEvent *event)
@@ -47,13 +50,47 @@ void LayerWidget::paintEvent(QPaintEvent *event)
     QStyleOption opt;
     opt.init(this);
     QPainter p(this);
+
+    // Если слой выбран, рисуем фон цветом выделения
+    if (m_is_selected) {
+        // Цвет: синий с прозрачностью (R, G, B, Alpha)
+        p.fillRect(rect(), QColor(60, 140, 220, 100));
+    }
+
     style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+}
+
+void LayerWidget::setSelected(bool selected)
+{
+    if (m_is_selected != selected) {
+        m_is_selected = selected;
+        update();
+    }
+}
+
+void LayerWidget::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        emit layerClicked();
+    }
+    QWidget::mousePressEvent(event);
 }
 
 void LayerWidget::onDeleteClicked()
 {
     emit deleteClicked();
 }
+
+void LayerWidget::onUpClicked()
+{
+    emit upClicked();
+}
+
+void LayerWidget::onDownClicked()
+{
+    emit downClicked();
+}
+
 
 // --- LayersPannel ---
 
@@ -83,6 +120,7 @@ LayersPannel::LayersPannel(QWidget *parent, Canvas* canvas)
     m_main_layout->addWidget(scrollArea);
 
     updateLayers();
+
     connect(m_new_layer_btn, &QPushButton::clicked, this, &LayersPannel::onNewLayerClicked);
 }
 
@@ -101,7 +139,8 @@ void LayersPannel::updateLayers()
     m_layers.clear();
 
     std::vector<LayerInfo> info = m_canvas_ptr->getLayersInfo();
-    qDebug() << "dbg: layers = " << info.size();
+
+    int selectedIdx = m_canvas_ptr->getSelectedLayerid();
 
     for (auto i = info.crbegin(); i != info.crend(); ++i)
     {
@@ -109,10 +148,17 @@ void LayersPannel::updateLayers()
         lw->setName(i->name);
         int index = info.size() - int(i - info.crbegin() + 1);
         lw->setIndex(index);
+
+        if (index == selectedIdx)
+            lw->setSelected(true);
+
         connect(lw, &LayerWidget::deleteClicked, this, &LayersPannel::onLayerDeleteClicked);
+        connect(lw, &LayerWidget::upClicked, this, &LayersPannel::onLayerUpClicked);
+        connect(lw, &LayerWidget::downClicked, this, &LayersPannel::onLayerDownClicked);
+
+        connect(lw, &LayerWidget::layerClicked, this, &LayersPannel::onLayerClicked);
 
         m_layers.push_back(lw);
-
         m_layers_layout->addWidget(lw);
     }
 }
@@ -123,6 +169,7 @@ void LayersPannel::onLayerDeleteClicked()
     if (sender_layer && m_canvas_ptr) {
         m_canvas_ptr->deleteLayer(sender_layer->getIndex());
         updateLayers();
+        m_canvas_ptr->renderCanvas();
     }
 }
 
@@ -130,4 +177,41 @@ void LayersPannel::onNewLayerClicked()
 {
     m_canvas_ptr->newLayer();
     updateLayers();
+}
+
+void LayersPannel::onLayerUpClicked()
+{
+    LayerWidget* sender_layer = qobject_cast<LayerWidget*>(sender());
+    moveLayer(sender_layer->getIndex(), 1);
+}
+
+void LayersPannel::onLayerDownClicked()
+{
+    LayerWidget* sender_layer = qobject_cast<LayerWidget*>(sender());
+    moveLayer(sender_layer->getIndex(), -1);
+}
+
+void LayersPannel::onLayerClicked()
+{
+    LayerWidget* sender_layer = qobject_cast<LayerWidget*>(sender());
+    if (!sender_layer || !m_canvas_ptr) return;
+
+    int index = sender_layer->getIndex();
+    m_canvas_ptr->selectLayer(index);
+    refreshSelectionVisuals(index);
+}
+
+void LayersPannel::moveLayer(int id, int shift)
+{
+    m_canvas_ptr->moveLayer(id, shift);
+    updateLayers();
+    m_canvas_ptr->renderCanvas();
+}
+
+void LayersPannel::refreshSelectionVisuals(int selectedIndex)
+{
+    for (LayerWidget* lw : m_layers)
+    {
+        lw->setSelected(lw->getIndex() == selectedIndex);
+    }
 }
