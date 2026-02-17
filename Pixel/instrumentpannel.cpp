@@ -34,6 +34,9 @@ void InstrumentPannel::createButtonsArray(QWidget* parent)
     {
         QPushButton* button = new QPushButton(/*QString("%1").arg(i),*/parent);
         button->setFixedSize(INSTURMENT_BTN_SIZE, INSTURMENT_BTN_SIZE);
+        connect(button,&QPushButton::clicked,parent,[](){
+            //ContextPannel::set
+        });
         m_bttns_instruments.push_back(button);
     }
 }

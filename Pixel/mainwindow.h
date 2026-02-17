@@ -8,6 +8,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsItem>
+#include <QFileDialog>
 #include <QSlider>
 #include <QDebug>
 
@@ -22,6 +23,7 @@
 #include "object.h"
 #include "projectmanager.h"
 
+#include "projectmanager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -40,6 +42,7 @@ public:
 
 private:
     void createMenuBar();
+    void openFile();
     Ui::MainWindow *ui;
 
     QGraphicsScene* m_scene_main;

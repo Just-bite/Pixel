@@ -7,6 +7,8 @@
 #include <QString>
 #include <unordered_map>
 
+#include "contextpannel.h"
+
 enum class InstrumentType
 {
     ERASER,

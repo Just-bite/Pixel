@@ -8,7 +8,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
     , m_scene_main(new QGraphicsScene(this))
     , m_view_main(new QGraphicsView(this))
-    , m_project_manager(nullptr)
+    , m_project_manager(new ProjectManager(this))
 {
     ui->setupUi(this);
 
@@ -88,12 +88,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     palette_layers_pannel_layout->addWidget(palette_pannel, 6);
     palette_layers_pannel_layout->addWidget(m_layers_pannel, 4);
-
     //
+
     workspace_layout->addWidget(instrument_pannel);
     workspace_layout->addWidget(m_view_main, 4);
     workspace_layout->addWidget(palette_layers_pannel, 2);
-
     // end 2
 
     // start 3
@@ -117,12 +116,36 @@ void MainWindow::createMenuBar()
     QMenuBar* menu_bar = this->menuBar();
 
     QMenu* file_menu = menu_bar->addMenu("&File");
-    file_menu->addAction("&Create file or project");
-    file_menu->addAction("&Open file or project");
-    file_menu->addAction("&Save project");
-    file_menu->addAction("&Save project as");
-    file_menu->addAction("&Close project");
-    file_menu->addAction("&Print");
+
+    QAction* create_action = file_menu->addAction("&Create file or project");
+    connect(create_action, &QAction::triggered, m_project_manager, &ProjectManager::createFile);
+    create_action->setShortcut(QKeySequence::New);
+
+
+    QAction* open_action = file_menu->addAction("&Open file or project");
+    connect(open_action, &QAction::triggered, m_project_manager, &ProjectManager::openFile);
+    open_action->setShortcut(QKeySequence::Open);
+
+    QAction* save_as_action = file_menu->addAction("&Save project as");
+    connect(save_as_action, &QAction::triggered, m_project_manager, &ProjectManager::saveAsFile);
+    save_as_action->setShortcut(QKeySequence::SaveAs);
+
+    QAction* save_action = file_menu->addAction("&Save project");
+    connect(save_action, &QAction::triggered, m_project_manager, &ProjectManager::saveFile);
+    save_action->setShortcut(QKeySequence::Save);
+
+    QAction* close_action = file_menu->addAction("&Close project");
+    connect(close_action, &QAction::triggered, m_project_manager, &ProjectManager::closeFile);
+    close_action->setShortcut(QKeySequence::Close);
+
+    QAction* print_action = file_menu->addAction("&Print");
+    connect(print_action, &QAction::triggered, m_project_manager, &ProjectManager::printFile);
+    print_action->setShortcut(QKeySequence::Print);
+
+
+
+
+
 
     QMenu* edit_menu = menu_bar->addMenu("&Edit");
     edit_menu->addAction("&Undo");
@@ -137,6 +160,30 @@ void MainWindow::createMenuBar()
     QMenu* help_menu = menu_bar->addMenu("&Help");
     help_menu->addAction("&Sos me die");
 }
+
+void MainWindow::renderCanvas()
+{
+    QRectF rect = m_scene_main->sceneRect();
+    QPixmap buffer(rect.size().toSize());
+
+    buffer.fill(Qt::white);
+
+    QPainter painter(&buffer);
+
+    if (m_canvas)
+        m_canvas->draw(&painter);
+
+    painter.end();
+
+    m_scene_main->clear();
+    m_scene_main->addPixmap(buffer);
+}
+
+void MainWindow::onForceUpdateCanvas()
+{
+    renderCanvas();
+}
+
 
 MainWindow::~MainWindow()
 {
