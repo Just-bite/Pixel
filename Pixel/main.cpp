@@ -3,21 +3,16 @@
 #include <QApplication>
 
 QString darkTheme = R"(
-        /* ТЕМНАЯ ТЕМА - меняются только цвета, размеры сохраняются */
-
-        /* Основной фон приложения */
         QWidget {
             background-color: #2b2b2b;
             color: #e0e0e0;
             font-family: 'Segoe UI', Arial, sans-serif;
         }
 
-        /* Фон для главного окна */
         QMainWindow {
             background-color: #2b2b2b;
         }
 
-        /* Менюбар */
         QMenuBar {
             background-color: #3c3c3c;
             color: #e0e0e0;
@@ -32,7 +27,6 @@ QString darkTheme = R"(
             background-color: #5a5a5a;
         }
 
-        /* Выпадающие меню */
         QMenu {
             background-color: #3c3c3c;
             color: #e0e0e0;
@@ -53,7 +47,6 @@ QString darkTheme = R"(
             margin: 4px 0;
         }
 
-        /* Кнопки */
         QPushButton {
             background-color: #929292;
             color: #000000;
@@ -122,7 +115,6 @@ QString darkTheme = R"(
             background-color: #2b2b2b;
         }
 
-        /* Поля ввода */
         QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox {
             background-color: #3c3c3c;
             color: #e0e0e0;
@@ -141,7 +133,6 @@ QString darkTheme = R"(
             color: #777777;
         }
 
-        /* Комбобокс выпадающий список */
         QComboBox QAbstractItemView {
             background-color: #3c3c3c;
             color: #e0e0e0;
@@ -160,7 +151,6 @@ QString darkTheme = R"(
             height: 8px;
         }
 
-        /* Слайдеры */
         QSlider::groove:horizontal {
             border: 1px solid #555555;
             height: 6px;
@@ -197,7 +187,6 @@ QString darkTheme = R"(
             border-radius: 7px;
         }
 
-        /* Скроллбары */
         QScrollBar:horizontal {
             background-color: #3c3c3c;
             height: 14px;
@@ -281,7 +270,6 @@ QString darkTheme = R"(
             padding: 4px;
         }
 
-        /* Прогресс бар */
         QProgressBar {
             border: 1px solid #555555;
             border-radius: 3px;
@@ -295,14 +283,12 @@ QString darkTheme = R"(
             border-radius: 2px;
         }
 
-        /* Статус бар */
         QStatusBar {
             background-color: #3c3c3c;
             color: #e0e0e0;
             border-top: 1px solid #555555;
         }
 
-        /* Тулбар */
         QToolBar {
             background-color: #3c3c3c;
             border: none;
@@ -324,7 +310,6 @@ QString darkTheme = R"(
             margin: 4px 2px;
         }
 
-        /* Сплиттеры */
         QSplitter::handle {
             background-color: #3c3c3c;
         }
@@ -341,7 +326,6 @@ QString darkTheme = R"(
             background-color: #666666;
         }
 
-        /* Лейблы */
         QLabel {
             color: #e0e0e0;
         }
@@ -350,7 +334,6 @@ QString darkTheme = R"(
             color: #777777;
         }
 
-        /* Чекбоксы и радио кнопки */
         QCheckBox, QRadioButton {
             color: #e0e0e0;
         }
