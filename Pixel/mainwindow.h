@@ -12,6 +12,9 @@
 #include <QResizeEvent>
 #include <QSlider>
 #include <QVBoxLayout>
+#include <QMouseEvent>
+#include <QKeyEvent>
+#include <QScrollBar>
 
 #include "contextpannel.h"
 #include "infopannel.h"
@@ -24,12 +27,8 @@
 #include "object.h"
 #include "projectmanager.h"
 
-#include "projectmanager.h"
-
 QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
-}
+namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow
@@ -59,6 +58,12 @@ private:
     PalettePannel *m_palette_pannel_layout;
 
     ProjectManager *m_project_manager;
+
+    // Переменные состояния для панорамирования и инструментов
+    bool m_space_pressed = false;
+    bool m_is_panning = false;
+    QPoint m_last_pan_pos;
+    bool m_is_drawing = false; // Состояние для отрисовки инструмента
 
 private slots:
     void updateInfoPanel();

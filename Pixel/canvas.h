@@ -3,15 +3,14 @@
 
 #include <QObject>
 #include <QPainter>
-#include <QWidget>
 #include <QDebug>
-#include <QPaintEvent>
 #include <QGraphicsScene>
+#include <QGraphicsPixmapItem>
 
 #include "layer.h"
 #include "object.h"
 
-class Canvas : public QWidget
+class Canvas : public QObject
 {
     Q_OBJECT
 
@@ -31,14 +30,15 @@ public:
 
     std::vector<LayerInfo> getLayersInfo() const;
 
+    QSize getSize() const { return m_canvas_size; }
+
 private:
     std::vector<Layer*> m_layers;
     QGraphicsScene* m_parent_sceene;
     Layer* m_selected;
     int m_selected_index;
 
-public slots:
-    void paintEvent(QPaintEvent* event) const {}
+    QSize m_canvas_size; // Жестко заданный размер холста
 };
 
 #endif // CANVAS_H

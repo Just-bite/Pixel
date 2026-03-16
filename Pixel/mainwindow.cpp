@@ -1,8 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-///НЕ УДАЛЯТЬ ЗАКОММЕНТИРОВАННЫЕ СТИЛИ, это для отладки!!!!!!!///
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -14,42 +12,36 @@ MainWindow::MainWindow(QWidget *parent)
 
     createMenuBar();
 
-    // start main container config
     QWidget *container_main = new QWidget(this);
     QVBoxLayout *container_layout = new QVBoxLayout(container_main);
     container_layout->setContentsMargins(0, 0, 0, 0);
 
-    // start 1
     QWidget *context_pannel = new QWidget(container_main);
     m_context_pannel_layout = new ContextPannel(context_pannel);
-    //context_pannel->setStyleSheet("border: 2px solid #ff0000; border-radius: 5px;");
-    // end 1
 
-    // start 2
     QWidget *workspace = new QWidget(container_main);
     QHBoxLayout *workspace_layout = new QHBoxLayout(workspace);
     workspace_layout->setContentsMargins(1, 1, 1, 1);
 
-    //
     QWidget *instrument_pannel = new QWidget(workspace);
     m_instrument_pannel_layout = new InstrumentPannel(instrument_pannel);
-    //instrument_pannel->setStyleSheet("border: 2px solid #ffff00; border-radius: 5px;");
-    //
 
-    //
-    m_scene_main->setSceneRect(
-        QRect(this->width() / 7, this->height() / 9, 4 * this->width() / 7, 7 * this->height() / 9));
-    //m_scene_main->addRect(m_scene_main->sceneRect());
+    // Устанавливаем "бесконечную" сцену для свободы панорамирования
+    m_scene_main->setSceneRect(-10000, -10000, 20000, 20000);
 
+    // Устанавливаем отслеживание мыши (чтобы ловить MouseMove даже без зажатия кнопок)
+    m_view_main->viewport()->setMouseTracking(true);
+
+    // Слушаем события View и его Viewport
     m_view_main->installEventFilter(this);
     m_view_main->viewport()->installEventFilter(this);
     m_view_main->setScene(m_scene_main);
+
+    // Скрываем скроллбары (сдвиг камеры будет программным)
     m_view_main->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     m_view_main->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     m_view_main->setDragMode(QGraphicsView::NoDrag);
-    //
 
-    //
     QWidget *palette_layers_pannel = new QWidget(workspace);
     QVBoxLayout *palette_layers_pannel_layout = new QVBoxLayout(palette_layers_pannel);
     palette_layers_pannel->setStyleSheet("border: 1px solid #555555; ");
@@ -72,8 +64,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     canvas->renderCanvas();
 
+    // Центрируем камеру точно по центру нашего 800x600 холста при старте
+    m_view_main->centerOn(canvas->getSize().width() / 2.0, canvas->getSize().height() / 2.0);
+
     m_layers_pannel = new LayersPannel(palette_layers_pannel, canvas);
-    //m_layers_pannel->setStyleSheet("border: 2px solid #ff00ff; border-radius: 5px;");
 
     QWidget *palette_pannel = new QWidget(workspace);
     QVBoxLayout *palette_pannel_layout = new QVBoxLayout(palette_pannel);
@@ -87,31 +81,21 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(slider, &QSlider::valueChanged, palette, &PalettePannel::setHue);
 
-    //palette_pannel->setStyleSheet("border: 2px solid #f0400f; border-radius: 5px;");
-
     palette_layers_pannel_layout->addWidget(palette_pannel, 5);
     palette_layers_pannel_layout->addWidget(m_layers_pannel, 5);
-    //
 
     workspace_layout->addWidget(instrument_pannel);
     workspace_layout->addWidget(m_view_main, 4);
     workspace_layout->addWidget(palette_layers_pannel, 2);
-    // end 2
 
-    // start 3
     QWidget *info_pannel = new QWidget(container_main);
-    m_info_pannel_layout = new InfoPannel({m_scene_main->width(), m_scene_main->height()},
-                                          1.0f,
-                                          info_pannel);
-    //info_pannel->setStyleSheet("border: 2px solid #00ffff; border-radius: 5px;");
-    // end 3
+    m_info_pannel_layout = new InfoPannel({canvas->getSize().width(), canvas->getSize().height()}, 1.0f, info_pannel);
 
     container_layout->addWidget(context_pannel, 1);
     container_layout->addWidget(workspace, 8);
     container_layout->addWidget(info_pannel, 0);
     container_layout->setMargin(0);
     container_layout->setSpacing(0);
-    // end main container config
 
     setCentralWidget(container_main);
     updateInfoPanel();
@@ -119,8 +103,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::createMenuBar()
 {
+    // Твой текущий код меню
     QMenuBar *menu_bar = this->menuBar();
-
     QMenu *file_menu = menu_bar->addMenu("&File");
 
     QAction *create_action = file_menu->addAction("&Create file or project");
@@ -150,32 +134,111 @@ void MainWindow::createMenuBar()
     QMenu *edit_menu = menu_bar->addMenu("&Edit");
     edit_menu->addAction("&Undo");
     edit_menu->addAction("&Redo");
-    edit_menu->addAction("&Copy");
-    edit_menu->addAction("&Paste");
-    edit_menu->addAction("&Search");
 
     QMenu *view_menu = menu_bar->addMenu("&View");
-    view_menu->addAction("&Me cant see");
-
     QMenu *help_menu = menu_bar->addMenu("&Help");
-    help_menu->addAction("&Sos me die");
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
-    if (obj == m_view_main || obj == m_view_main->viewport()) {
-        switch (event->type()) {
-        case QEvent::Wheel: {
+    // Обработка клавиатуры (Space)
+    if (event->type() == QEvent::KeyPress) {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Space && !keyEvent->isAutoRepeat()) {
+            m_space_pressed = true;
+            if (!m_is_panning) m_view_main->setCursor(Qt::OpenHandCursor);
+            return true;
+        }
+    } else if (event->type() == QEvent::KeyRelease) {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Space && !keyEvent->isAutoRepeat()) {
+            m_space_pressed = false;
+            m_is_panning = false;
+            m_view_main->setCursor(Qt::ArrowCursor);
+            return true;
+        }
+    }
+
+    // Обработка мыши на Viewport
+    if (obj == m_view_main->viewport() || obj == m_view_main) {
+
+        // ЗУМ (Скролл)
+        if (event->type() == QEvent::Wheel) {
             QWheelEvent *wheelEvent = static_cast<QWheelEvent *>(event);
-
             m_view_main->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-
             int delta = wheelEvent->angleDelta().y();
             double factor = (delta > 0) ? 1.15 : (1.0 / 1.15);
             m_view_main->scale(factor, factor);
             updateInfoPanel();
             return true;
         }
+
+        // НАЖАТИЕ МЫШИ
+        if (event->type() == QEvent::MouseButtonPress) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+
+            // Если зажат Space + ЛКМ или клик на среднюю кнопку (колесико) - начинаем двигать камеру
+            if ((mouseEvent->button() == Qt::LeftButton && m_space_pressed) || mouseEvent->button() == Qt::MiddleButton) {
+                m_is_panning = true;
+                m_last_pan_pos = mouseEvent->pos();
+                m_view_main->setCursor(Qt::ClosedHandCursor);
+                return true;
+            }
+
+            // Иначе - передаем координаты Инструменту
+            if (mouseEvent->button() == Qt::LeftButton) {
+                m_is_drawing = true;
+                QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
+                qDebug() << "[TOOL] Mouse PRESS at Canvas:" << internalPos;
+                // TODO: activeTool->mousePress(internalPos);
+            }
+        }
+
+        // ДВИЖЕНИЕ МЫШИ
+        if (event->type() == QEvent::MouseMove) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+
+            // Сдвиг камеры
+            if (m_is_panning) {
+                QPoint delta = mouseEvent->pos() - m_last_pan_pos;
+                m_view_main->horizontalScrollBar()->setValue(m_view_main->horizontalScrollBar()->value() - delta.x());
+                m_view_main->verticalScrollBar()->setValue(m_view_main->verticalScrollBar()->value() - delta.y());
+                m_last_pan_pos = mouseEvent->pos();
+                return true;
+            }
+
+            // Работа инструмента
+            if (m_is_drawing) {
+                QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
+
+                // Проверка выхода мыши за пределы окна редактирования (по твоему запросу)
+                if (!m_view_main->viewport()->rect().contains(mouseEvent->pos())) {
+                    qDebug() << "[TOOL] Mouse went outside UI! Drag cancelled/clamped.";
+                    // Можно вызвать activeTool->mouseLeave(); или clamp координат
+                } else {
+                    // Раскомментируй, если хочешь видеть спам координат
+                    // qDebug() << "[TOOL] Mouse MOVE at Canvas:" << internalPos;
+                    // TODO: activeTool->mouseMove(internalPos);
+                }
+            }
+        }
+
+        // ОТПУСКАНИЕ МЫШИ
+        if (event->type() == QEvent::MouseButtonRelease) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+
+            if (m_is_panning) {
+                m_is_panning = false;
+                m_view_main->setCursor(m_space_pressed ? Qt::OpenHandCursor : Qt::ArrowCursor);
+                return true;
+            }
+
+            if (m_is_drawing && mouseEvent->button() == Qt::LeftButton) {
+                m_is_drawing = false;
+                QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
+                qDebug() << "[TOOL] Mouse RELEASE at Canvas:" << internalPos;
+                // TODO: activeTool->mouseRelease(internalPos);
+            }
         }
     }
 
@@ -186,22 +249,20 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
 
-    QRect viewportRect = m_view_main->viewport()->rect();
-    m_scene_main->setSceneRect(0, 0, viewportRect.width(), viewportRect.height());
-    Canvas *canvas = m_project_manager->GetCurrentCanvas();
-    canvas->setScene(m_scene_main);
-    canvas->renderCanvas();
+    // Больше не меняем размер сцены здесь!
+    // Только обновляем инфо панель (размер и масштаб)
     updateInfoPanel();
 }
 
 void MainWindow::updateInfoPanel()
 {
-    if (!m_info_pannel_layout)
-        return;
+    if (!m_info_pannel_layout || !m_project_manager) return;
 
-    QRectF sceneRect = m_scene_main->sceneRect();
-    int width = static_cast<int>(sceneRect.width());
-    int height = static_cast<int>(sceneRect.height());
+    Canvas *canvas = m_project_manager->GetCurrentCanvas();
+    if (!canvas) return;
+
+    int width = canvas->getSize().width();
+    int height = canvas->getSize().height();
 
     m_info_pannel_layout->setCanvasSize({width, height});
     m_info_pannel_layout->updateCanvasSizeDisplay(width, height);
