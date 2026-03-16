@@ -6,6 +6,8 @@
 #include <QDebug>
 #include <QGraphicsScene>
 #include <QGraphicsPixmapItem>
+#include <QGraphicsRectItem>
+#include <unordered_map>
 
 #include "layer.h"
 #include "object.h"
@@ -38,7 +40,11 @@ private:
     Layer* m_selected;
     int m_selected_index;
 
-    QSize m_canvas_size; // Жестко заданный размер холста
+    QSize m_canvas_size;
+
+    // Рендер-элементы
+    QGraphicsRectItem* m_bg_item; // Белый фон холста
+    std::unordered_map<Layer*, QGraphicsPixmapItem*> m_layer_items; // Текстуры слоев
 };
 
 #endif // CANVAS_H

@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QTimer> // ОБЯЗАТЕЛЬНО ДЛЯ ОТЛОЖЕННОГО ЦЕНТРИРОВАНИЯ
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -29,7 +30,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Устанавливаем "бесконечную" сцену для свободы панорамирования
     m_scene_main->setSceneRect(-10000, -10000, 20000, 20000);
 
-    // Устанавливаем отслеживание мыши (чтобы ловить MouseMove даже без зажатия кнопок)
+    // Устанавливаем отслеживание мыши
     m_view_main->viewport()->setMouseTracking(true);
 
     // Слушаем события View и его Viewport
@@ -51,6 +52,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_project_manager->createProject();
     Canvas *canvas = m_project_manager->GetCurrentCanvas();
     canvas->setScene(m_scene_main);
+
     Layer *layer1 = new Layer("layer1", canvas);
     Layer *layer2 = new Layer("layer2", canvas);
     Ellipse *e1 = new Ellipse(QPointF(300, 300), 30, layer1);
@@ -63,9 +65,6 @@ MainWindow::MainWindow(QWidget *parent)
     canvas->addLayer(layer2);
 
     canvas->renderCanvas();
-
-    // Центрируем камеру точно по центру нашего 800x600 холста при старте
-    m_view_main->centerOn(canvas->getSize().width() / 2.0, canvas->getSize().height() / 2.0);
 
     m_layers_pannel = new LayersPannel(palette_layers_pannel, canvas);
 
@@ -91,19 +90,29 @@ MainWindow::MainWindow(QWidget *parent)
     QWidget *info_pannel = new QWidget(container_main);
     m_info_pannel_layout = new InfoPannel({canvas->getSize().width(), canvas->getSize().height()}, 1.0f, info_pannel);
 
+    // Связываем сигналы инфо-панели с управлением камерой!
+    connect(m_info_pannel_layout, &InfoPannel::zoomInRequested, this, &MainWindow::onZoomIn);
+    connect(m_info_pannel_layout, &InfoPannel::zoomOutRequested, this, &MainWindow::onZoomOut);
+    connect(m_info_pannel_layout, &InfoPannel::fitRequested, this, &MainWindow::onFitToScreen);
+    connect(m_info_pannel_layout, &InfoPannel::scaleChanged, this, &MainWindow::onSetAbsoluteZoom);
+
+    // ВОТ ЭТОТ БЛОК БЫЛ УТЕРЯН! ВОЗВРАЩАЕМ ЕГО:
     container_layout->addWidget(context_pannel, 1);
     container_layout->addWidget(workspace, 8);
     container_layout->addWidget(info_pannel, 0);
-    container_layout->setMargin(0);
+    // Использован setContentsMargins вместо устаревшего setMargin
+    container_layout->setContentsMargins(0, 0, 0, 0);
     container_layout->setSpacing(0);
 
     setCentralWidget(container_main);
     updateInfoPanel();
+
+    // Откладываем вписывание камеры до момента, когда UI полностью прорисуется (0 миллисекунд)
+    QTimer::singleShot(0, this, &MainWindow::onFitToScreen);
 }
 
 void MainWindow::createMenuBar()
 {
-    // Твой текущий код меню
     QMenuBar *menu_bar = this->menuBar();
     QMenu *file_menu = menu_bar->addMenu("&File");
 
@@ -141,7 +150,6 @@ void MainWindow::createMenuBar()
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
-    // Обработка клавиатуры (Space)
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
         if (keyEvent->key() == Qt::Key_Space && !keyEvent->isAutoRepeat()) {
@@ -159,10 +167,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
         }
     }
 
-    // Обработка мыши на Viewport
     if (obj == m_view_main->viewport() || obj == m_view_main) {
-
-        // ЗУМ (Скролл)
         if (event->type() == QEvent::Wheel) {
             QWheelEvent *wheelEvent = static_cast<QWheelEvent *>(event);
             m_view_main->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
@@ -173,11 +178,8 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
             return true;
         }
 
-        // НАЖАТИЕ МЫШИ
         if (event->type() == QEvent::MouseButtonPress) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-
-            // Если зажат Space + ЛКМ или клик на среднюю кнопку (колесико) - начинаем двигать камеру
             if ((mouseEvent->button() == Qt::LeftButton && m_space_pressed) || mouseEvent->button() == Qt::MiddleButton) {
                 m_is_panning = true;
                 m_last_pan_pos = mouseEvent->pos();
@@ -185,20 +187,15 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
                 return true;
             }
 
-            // Иначе - передаем координаты Инструменту
             if (mouseEvent->button() == Qt::LeftButton) {
                 m_is_drawing = true;
                 QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
                 qDebug() << "[TOOL] Mouse PRESS at Canvas:" << internalPos;
-                // TODO: activeTool->mousePress(internalPos);
             }
         }
 
-        // ДВИЖЕНИЕ МЫШИ
         if (event->type() == QEvent::MouseMove) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-
-            // Сдвиг камеры
             if (m_is_panning) {
                 QPoint delta = mouseEvent->pos() - m_last_pan_pos;
                 m_view_main->horizontalScrollBar()->setValue(m_view_main->horizontalScrollBar()->value() - delta.x());
@@ -207,26 +204,18 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
                 return true;
             }
 
-            // Работа инструмента
             if (m_is_drawing) {
                 QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
-
-                // Проверка выхода мыши за пределы окна редактирования (по твоему запросу)
                 if (!m_view_main->viewport()->rect().contains(mouseEvent->pos())) {
                     qDebug() << "[TOOL] Mouse went outside UI! Drag cancelled/clamped.";
-                    // Можно вызвать activeTool->mouseLeave(); или clamp координат
                 } else {
-                    // Раскомментируй, если хочешь видеть спам координат
                     // qDebug() << "[TOOL] Mouse MOVE at Canvas:" << internalPos;
-                    // TODO: activeTool->mouseMove(internalPos);
                 }
             }
         }
 
-        // ОТПУСКАНИЕ МЫШИ
         if (event->type() == QEvent::MouseButtonRelease) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-
             if (m_is_panning) {
                 m_is_panning = false;
                 m_view_main->setCursor(m_space_pressed ? Qt::OpenHandCursor : Qt::ArrowCursor);
@@ -237,7 +226,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
                 m_is_drawing = false;
                 QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
                 qDebug() << "[TOOL] Mouse RELEASE at Canvas:" << internalPos;
-                // TODO: activeTool->mouseRelease(internalPos);
             }
         }
     }
@@ -248,9 +236,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
-
-    // Больше не меняем размер сцены здесь!
-    // Только обновляем инфо панель (размер и масштаб)
     updateInfoPanel();
 }
 
@@ -267,7 +252,7 @@ void MainWindow::updateInfoPanel()
     m_info_pannel_layout->setCanvasSize({width, height});
     m_info_pannel_layout->updateCanvasSizeDisplay(width, height);
 
-    qreal scaleX = m_view_main->transform().m11(); // масштаб по X
+    qreal scaleX = m_view_main->transform().m11();
     float scale = static_cast<float>(scaleX);
 
     m_info_pannel_layout->setScale(scale);
@@ -277,4 +262,36 @@ void MainWindow::updateInfoPanel()
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::onZoomIn()
+{
+    m_view_main->scale(1.15, 1.15);
+    updateInfoPanel();
+}
+
+void MainWindow::onZoomOut()
+{
+    m_view_main->scale(1.0 / 1.15, 1.0 / 1.15);
+    updateInfoPanel();
+}
+
+void MainWindow::onFitToScreen()
+{
+    if (m_view_main->viewport()->width() < 10 || m_view_main->viewport()->height() < 10) return;
+
+    Canvas *canvas = m_project_manager->GetCurrentCanvas();
+    if (!canvas) return;
+
+    QRectF canvasRect(0, 0, canvas->getSize().width(), canvas->getSize().height());
+    m_view_main->fitInView(canvasRect, Qt::KeepAspectRatio);
+    m_view_main->scale(0.95, 0.95);
+    updateInfoPanel();
+}
+
+void MainWindow::onSetAbsoluteZoom(float scale)
+{
+    m_view_main->resetTransform();
+    m_view_main->scale(scale, scale);
+    updateInfoPanel();
 }

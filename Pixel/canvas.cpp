@@ -9,7 +9,8 @@ Canvas::Canvas(QObject* parent)
     : QObject(parent)
     , m_parent_sceene(nullptr)
     , m_selected(nullptr)
-    , m_canvas_size(800, 600) // Задаем размер для теста
+    , m_canvas_size(800, 600)
+    , m_bg_item(nullptr)
 {
 }
 
@@ -45,29 +46,63 @@ std::vector<LayerInfo> Canvas::getLayersInfo() const
 void Canvas::deleteLayer(const int id)
 {
     if (!ID_IN_BOUNDS(id)) { qDebug() << "err: trying to remove layer " << id; return; }
-    delete m_layers[id];
+
+    Layer* layer = m_layers[id];
+
+    // Удаляем графический элемент со сцены
+    if (m_layer_items.count(layer)) {
+        if (m_parent_sceene) m_parent_sceene->removeItem(m_layer_items[layer]);
+        delete m_layer_items[layer];
+        m_layer_items.erase(layer);
+    }
+
+    delete layer;
     m_layers.erase(m_layers.begin() + id);
 }
 
 void Canvas::renderCanvas()
 {
-    if (!this) { qDebug() << "err: null canvas"; return; }
     if (!m_parent_sceene) { qDebug() << "err: canvas does not have scene"; return; }
 
-    // Создаем буфер фиксированного размера нашего холста
-    QPixmap buffer(m_canvas_size);
-    buffer.fill(Qt::white);
+    // 1. Рисуем белый фон холста (только один раз), на Z-индексе -1
+    if (!m_bg_item) {
+        m_bg_item = m_parent_sceene->addRect(0, 0, m_canvas_size.width(), m_canvas_size.height(),
+                                             QPen(Qt::NoPen), QBrush(Qt::white));
+        m_bg_item->setZValue(-1);
+    }
 
-    QPainter painter(&buffer);
-    this->draw(&painter);
-    painter.end();
+    // 2. Обновляем каждый слой отдельно! Никакого m_parent_scene->clear()
+    for (size_t i = 0; i < m_layers.size(); ++i) {
+        Layer* layer = m_layers[i];
 
-    // Очищаем старое (временно оставим так, позже перейдем на слои-итемы)
-    m_parent_sceene->clear();
+        // Создаем итем слоя, если его еще нет
+        if (m_layer_items.find(layer) == m_layer_items.end()) {
+            QGraphicsPixmapItem* item = new QGraphicsPixmapItem();
+            m_parent_sceene->addItem(item);
+            m_layer_items[layer] = item;
+        }
 
-    // Кладем холст ровно в координаты (0,0) на сцене
-    QGraphicsPixmapItem* item = m_parent_sceene->addPixmap(buffer);
-    item->setPos(0, 0);
+        QGraphicsPixmapItem* item = m_layer_items[layer];
+
+        // Порядок в векторе = Z-index на экране (нижние рисуются раньше, Z меньше)
+        item->setZValue(i);
+
+        // Если слой видим — перерисовываем его пиксельмап
+        if (layer->isVisible()) {
+            QPixmap pixmap(m_canvas_size);
+            pixmap.fill(Qt::transparent); // Слой изначально прозрачный!
+
+            QPainter painter(&pixmap);
+            painter.setRenderHint(QPainter::Antialiasing);
+            layer->draw(&painter);
+            painter.end();
+
+            item->setPixmap(pixmap);
+            item->show();
+        } else {
+            item->hide();
+        }
+    }
 }
 
 void Canvas::moveLayer(int id, int shift)
@@ -81,6 +116,8 @@ void Canvas::moveLayer(int id, int shift)
     m_layers[other_id] = temp;
     m_selected_index = (m_selected_index + shift) % m_layers.size();
     m_selected = m_layers[m_selected_index];
+
+    // Просто вызываем renderCanvas() — он сам расставит новые Z-индексы
 }
 
 void Canvas::selectLayer(int id)
