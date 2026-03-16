@@ -64,7 +64,9 @@ private:
     bool m_is_panning = false;
     QPoint m_last_pan_pos;
     bool m_is_drawing = false; // Состояние для отрисовки инструмента
-    // (Оставь всё как было, добавь только блок private slots)
+    QPointF m_draw_start_pos;
+    Ellipse* m_temp_ellipse = nullptr;
+
 private slots:
     void updateInfoPanel();
 

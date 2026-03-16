@@ -26,3 +26,20 @@ void Ellipse::draw(QPainter* painter) const
 bool Ellipse::contains(const QPointF& point) const { return false; /* TODO */ }
 
 QRectF Ellipse::boundingRect() const { return QRectF(); /* TODO */ }
+
+// Добавь эти методы в конец object.cpp
+void Ellipse::setCenter(const QPointF& center) {
+    m_center = center;
+}
+
+QPointF Ellipse::getCenter() const {
+    return m_center;
+}
+
+void Ellipse::setRadius(qreal radius) {
+    m_radius = radius;
+}
+
+qreal Ellipse::getRadius() const {
+    return m_radius;
+}

@@ -178,8 +178,10 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
             return true;
         }
 
+        // НАЖАТИЕ МЫШИ
         if (event->type() == QEvent::MouseButtonPress) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+
             if ((mouseEvent->button() == Qt::LeftButton && m_space_pressed) || mouseEvent->button() == Qt::MiddleButton) {
                 m_is_panning = true;
                 m_last_pan_pos = mouseEvent->pos();
@@ -190,7 +192,68 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
             if (mouseEvent->button() == Qt::LeftButton) {
                 m_is_drawing = true;
                 QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
-                qDebug() << "[TOOL] Mouse PRESS at Canvas:" << internalPos;
+                m_draw_start_pos = internalPos;
+
+                Canvas *canvas = m_project_manager->GetCurrentCanvas();
+
+                // ТЕСТ: Создаем эллипс с нулевым радиусом в точке клика
+                m_temp_ellipse = new Ellipse(internalPos, 0);
+                // Зададим ему цвет, чтобы было видно
+                // m_temp_ellipse->setFillColor(Qt::blue); // Раскомментируй, если у тебя реализован setFillColor
+
+                canvas->addObjectToSelectedLayer(m_temp_ellipse);
+                canvas->renderCanvas();
+            }
+        }
+
+        // ДВИЖЕНИЕ МЫШИ
+        if (event->type() == QEvent::MouseMove) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+
+            if (m_is_panning) {
+                QPoint delta = mouseEvent->pos() - m_last_pan_pos;
+                m_view_main->horizontalScrollBar()->setValue(m_view_main->horizontalScrollBar()->value() - delta.x());
+                m_view_main->verticalScrollBar()->setValue(m_view_main->verticalScrollBar()->value() - delta.y());
+                m_last_pan_pos = mouseEvent->pos();
+                return true;
+            }
+
+            if (m_is_drawing && m_temp_ellipse) {
+                QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
+                Canvas *canvas = m_project_manager->GetCurrentCanvas();
+
+                // Вычисляем новый центр и радиус на основе движения мыши
+                QPointF center = (m_draw_start_pos + internalPos) / 2.0;
+
+                // Считаем дистанцию (простой вариант для круга)
+                qreal radius = qAbs(internalPos.x() - m_draw_start_pos.x()) / 2.0;
+
+                m_temp_ellipse->setCenter(center);
+                m_temp_ellipse->setRadius(radius);
+
+                // Перерисовываем холст, чтобы увидеть изменения в реальном времени
+                canvas->renderCanvas();
+            }
+        }
+
+        // ОТПУСКАНИЕ МЫШИ
+        if (event->type() == QEvent::MouseButtonRelease) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+
+            if (m_is_panning) {
+                m_is_panning = false;
+                m_view_main->setCursor(m_space_pressed ? Qt::OpenHandCursor : Qt::ArrowCursor);
+                return true;
+            }
+
+            if (m_is_drawing && mouseEvent->button() == Qt::LeftButton) {
+                m_is_drawing = false;
+
+                // Фиксируем фигуру. Теперь она остается на слое.
+                // В будущем здесь будет генерация команды для QUndoStack.
+                m_temp_ellipse = nullptr;
+
+                qDebug() << "[TOOL] Figure finalized.";
             }
         }
 
