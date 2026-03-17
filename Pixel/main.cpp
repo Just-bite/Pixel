@@ -64,6 +64,12 @@ QString darkTheme = R"(
             background-color: #2a2a2a;
         }
 
+        QPushButton:checked {
+            background-color: #4a6b8f;
+            border: 2px solid #ffffff;
+            color: #ffffff;
+        }
+
         QPushButton:disabled {
             background-color: #333333;
             color: #777777;

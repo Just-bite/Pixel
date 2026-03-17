@@ -73,11 +73,19 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
 
                 Canvas *canvas = m_project_manager->GetCurrentCanvas();
                 if (canvas && canvas->getSelectedLayerid() >= 0) {
+
+                    // Сбрасываем выделение с других объектов, чтобы рамка была только у нового!
+                    m_view->scene()->clearSelection();
+
                     m_temp_ellipse = new Ellipse(QRectF(m_draw_start_pos, QSizeF(0, 0)));
                     canvas->addObjectToSelectedLayer(m_temp_ellipse);
+
+                    // ДЕЛАЕМ ОБЪЕКТ ВЫДЕЛЕННЫМ (появится синяя рамка)
+                    m_temp_ellipse->setSelected(true);
                 }
-                return true; // Блокируем стандартное выделение Qt
+                return true;
             }
+
 
             // Инструмент: Указатель (POINTER)
             if (m_current_tool == InstrumentType::POINTER) {
