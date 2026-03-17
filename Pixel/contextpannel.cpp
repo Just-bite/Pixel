@@ -49,7 +49,14 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     main_layout->addWidget(m_layer_group);
     main_layout->addStretch();
 
-    m_default_state.fill = Qt::cyan; m_default_state.stroke = Qt::black; m_default_state.thickness = 2.0f; m_default_state.type = FigureType::Ellipse;
+    m_default_state.fill = Qt::cyan;
+    m_default_state.stroke = Qt::black;
+    m_default_state.thickness = 2.0f;
+    m_default_state.type = FigureType::Ellipse;
+    // ДОБАВИТЬ ЭТО, чтобы избежать NaN:
+    m_default_state.pos = QPointF(0, 0);
+    m_default_state.rot = 0.0;
+    m_default_state.rect = QRectF(0, 0, 0, 0);
 
     connect(m_btn_fill_color, &QPushButton::clicked, this, &ContextPannel::onColorFillClicked);
     connect(m_btn_stroke_color, &QPushButton::clicked, this, &ContextPannel::onColorStrokeClicked);

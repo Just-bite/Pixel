@@ -8,7 +8,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
     , m_scene_main(new QGraphicsScene(this))
     , m_view_main(new QGraphicsView(this))
-    , m_project_manager(new ProjectManager(this))
+    , m_project_manager(new ProjectManager())
 {
     ui->setupUi(this);
 
@@ -29,8 +29,21 @@ MainWindow::MainWindow(QWidget *parent)
     m_scene_main->setSceneRect(-10000, -10000, 20000, 20000);
     m_view_main->viewport()->setMouseTracking(true);
 
-    m_project_manager = new ProjectManager();
+
     m_project_manager->createProject();
+
+    connect(m_project_manager, &ProjectManager::projectLoaded, this, [this](){
+        if(m_workspace_controller) m_workspace_controller->getUndoStack()->clear();
+    });
+    // Чтобы боковая панель слоев обновилась при открытии файла
+    connect(m_project_manager, &ProjectManager::layersUpdated, this, [this](){
+        if(m_layers_pannel) {
+            // Чтобы вызвать приватный метод updateLayers, можно просто симулировать выбор слоя
+            m_layers_pannel->selectLayerFromOutside(0);
+            // А лучше добавь метод forceUpdate() в layerspannel.h ;)
+        }
+    });
+
     Canvas *canvas = m_project_manager->GetCurrentCanvas();
     canvas->setScene(m_scene_main);
     m_view_main->setScene(m_scene_main);
@@ -45,9 +58,7 @@ MainWindow::MainWindow(QWidget *parent)
     palette_layers_pannel->setMaximumWidth(300); // Немного сузили для компактности
 
     Layer *layer1 = new Layer("layer1");
-    Layer *layer2 = new Layer("layer2");
     canvas->addLayer(layer1);
-    canvas->addLayer(layer2);
     canvas->renderCanvas();
 
     m_layers_pannel = new LayersPannel(palette_layers_pannel, canvas);
@@ -83,17 +94,25 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(container_main);
     updateInfoPanel();
 
-    m_workspace_controller = new WorkspaceController(
-        m_view_main, m_scene_main, m_project_manager,
-        m_context_pannel_layout, palette_widget, m_layers_pannel,
-        this);
-
+    m_workspace_controller = new WorkspaceController(m_view_main, m_scene_main, m_project_manager, m_context_pannel_layout, palette_widget, m_layers_pannel, this);
     connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
     connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
 
+    // ВОТ СЮДА ПЕРЕНЕСИ CONNECT ДЛЯ МЕНЕДЖЕРА:
+    connect(m_project_manager, &ProjectManager::projectLoaded, this, [this](){
+        if(m_workspace_controller && m_workspace_controller->getUndoStack()) {
+            m_workspace_controller->getUndoStack()->clear();
+        }
+        updateInfoPanel();
+    });
+
+    // m_layers_pannel уже гарантированно существует!
+    connect(m_project_manager, &ProjectManager::layersUpdated, m_layers_pannel, &LayersPannel::updateLayers);
+
     createMenuBar();
     QTimer::singleShot(0, this, &MainWindow::onFitToScreen);
-}
+} // Конец конструктора MainWindow
+
 
 void MainWindow::createMenuBar()
 {
@@ -117,6 +136,10 @@ void MainWindow::createMenuBar()
     connect(save_as_action, &QAction::triggered, m_project_manager, &ProjectManager::saveAsFile);
     save_as_action->setShortcut(QKeySequence::SaveAs);
 
+    QAction *export_action = file_menu->addAction("&Export to PNG...");
+    connect(export_action, &QAction::triggered, m_project_manager, &ProjectManager::exportPng);
+    export_action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_E));
+
     // Edit (Undo / Redo)
     QMenu *edit_menu = menu_bar->addMenu("&Edit");
     if (m_workspace_controller) {
@@ -133,14 +156,17 @@ void MainWindow::createMenuBar()
     QMenu *view_menu = menu_bar->addMenu("&View");
 
     QAction *zoom_in_act = view_menu->addAction("Zoom &In");
-    zoom_in_act->setShortcut(QKeySequence::ZoomIn);
+    // Оставляем только ZoomIn и Ctrl+= (иногда плюс без шифта это равно)
+    zoom_in_act->setShortcuts({QKeySequence::ZoomIn, QKeySequence(Qt::CTRL | Qt::Key_Equal)});
     connect(zoom_in_act, &QAction::triggered, this, &MainWindow::onZoomIn);
 
     QAction *zoom_out_act = view_menu->addAction("Zoom &Out");
+    // Убрали дубликат! QKeySequence::ZoomOut уже включает в себя Ctrl+-
     zoom_out_act->setShortcut(QKeySequence::ZoomOut);
     connect(zoom_out_act, &QAction::triggered, this, &MainWindow::onZoomOut);
 
     QAction *fit_act = view_menu->addAction("&Fit to Screen");
+    fit_act->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_0));
     connect(fit_act, &QAction::triggered, this, &MainWindow::onFitToScreen);
 
     // Help
@@ -177,7 +203,20 @@ void MainWindow::updateInfoPanel()
     m_info_pannel_layout->updateScaleDisplay(scale);
 }
 
-MainWindow::~MainWindow() { delete ui; }
+MainWindow::~MainWindow() {
+    // Шаг 1: Очищаем историю, чтобы уничтожились висящие в памяти удаленные объекты
+    if (m_workspace_controller && m_workspace_controller->getUndoStack()) {
+        m_workspace_controller->getUndoStack()->clear();
+    }
+
+    // Шаг 2: Мягко удаляем слои и фигуры через наш Canvas, обходя баги QGraphicsScene::clear()
+    if (m_project_manager && m_project_manager->GetCurrentCanvas()) {
+        m_project_manager->GetCurrentCanvas()->clearCanvas();
+    }
+
+    delete ui;
+}
+
 void MainWindow::onZoomIn() { m_view_main->scale(1.15, 1.15); updateInfoPanel(); }
 void MainWindow::onZoomOut() { m_view_main->scale(1.0 / 1.15, 1.0 / 1.15); updateInfoPanel(); }
 void MainWindow::onFitToScreen() {

@@ -22,8 +22,10 @@ LayerWidget::LayerWidget(QWidget* parent) : QWidget(parent) {
         b->setFixedSize(BTN_SIZE, BTN_SIZE);
     }
 
-    m_layer_name = new QLineEdit();
+    m_layer_name = new QLineEdit(this);
     m_layer_name->setStyleSheet("background: transparent; border: none; color: #e0e0e0;");
+    m_layer_name->installEventFilter(this); // ПЕРЕХВАТЫВАЕМ КЛИК!
+
     connect(m_layer_name, &QLineEdit::editingFinished, this, [this](){
         emit nameChanged(m_layer_name->text());
         m_layer_name->clearFocus();
@@ -47,7 +49,7 @@ LayerWidget::LayerWidget(QWidget* parent) : QWidget(parent) {
 
 void LayerWidget::setName(const QString& name) {
     m_layer_name->setText(name);
-    m_layer_name->setCursorPosition(0); // Чтобы длинное имя не скроллилось в конец
+    m_layer_name->setCursorPosition(0);
 }
 
 void LayerWidget::paintEvent(QPaintEvent *) {
@@ -67,6 +69,14 @@ void LayerWidget::onLockedToggled(bool checked) { emit lockedToggled(checked); }
 void LayerWidget::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) emit layerClicked();
     QWidget::mousePressEvent(event);
+}
+
+bool LayerWidget::eventFilter(QObject *obj, QEvent *event) {
+    if (obj == m_layer_name && event->type() == QEvent::MouseButtonPress) {
+        emit layerClicked(); // Эмулируем клик по слою
+        // Возвращаем false, чтобы QLineEdit всё равно получил фокус для ввода текста
+    }
+    return QWidget::eventFilter(obj, event);
 }
 
 LayersPannel::LayersPannel(QWidget *parent, Canvas* canvas) : QWidget(parent), m_canvas_ptr(canvas) {

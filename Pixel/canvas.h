@@ -22,6 +22,11 @@ public:
     void renderCanvas();
     void setScene(QGraphicsScene* scene) { m_parent_sceene = scene; }
     void moveLayer(int id, int shift);
+    void setSize(int w, int h);
+
+    const std::vector<Layer*>& getLayers() const { return m_layers; }
+    QGraphicsScene* getScene() const { return m_parent_sceene; }
+    void clearCanvas();
 
     void selectLayer(int id);
     int getSelectedLayerid() const { return m_selected_index; }
@@ -43,7 +48,7 @@ private:
     int m_selected_index;
     QSize m_canvas_size;
     QGraphicsRectItem* m_bg_item;
-    int m_layer_counter = 0;
+    int m_layer_counter;
 };
 
 #endif // CANVAS_H

@@ -19,6 +19,8 @@ public:
     explicit Layer(const QString& name, QGraphicsItem* parent = nullptr);
     ~Layer() override;
 
+    std::vector<Object*> getObjects() const;
+
     void addObject(Object* object);
     void removeObject(Object* object);
 

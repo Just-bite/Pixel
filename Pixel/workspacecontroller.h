@@ -64,6 +64,9 @@ private:
 
     FigureState m_clipboard_state;
     bool m_has_clipboard = false;
+
+    Figure* m_drag_target = nullptr;
+    FigureState m_drag_start_state;
 };
 
 #endif // WORKSPACECONTROLLER_H

@@ -1,7 +1,7 @@
 #include "canvas.h"
 #define ID_IN_BOUNDS(id) (id >= 0 && id < (int)m_layers.size())
 
-Canvas::Canvas(QObject* parent) : QObject(parent), m_parent_sceene(nullptr), m_selected(nullptr), m_selected_index(-1), m_canvas_size(800, 600), m_bg_item(nullptr), m_layer_counter(0) {}
+Canvas::Canvas(QObject* parent) : QObject(parent), m_parent_sceene(nullptr), m_selected(nullptr), m_selected_index(-1), m_canvas_size(800, 600), m_bg_item(nullptr), m_layer_counter(1) {}
 
 void Canvas::addLayer(Layer* layer) {
     if (!layer) return;
@@ -26,8 +26,15 @@ std::vector<LayerInfo> Canvas::getLayersInfo() const {
 
 void Canvas::deleteLayer(const int id) {
     if (!ID_IN_BOUNDS(id)) return;
+
+    // ЗАЩИТА ОТ КРАША: Снимаем выделение, если удаляем конкретный слой
+    if (m_parent_sceene) {
+        m_parent_sceene->clearSelection();
+    }
+
     Layer* layer = m_layers[id];
     if (m_parent_sceene) m_parent_sceene->removeItem(layer);
+
     delete layer;
     m_layers.erase(m_layers.begin() + id);
 
@@ -93,4 +100,24 @@ void Canvas::moveObjectToLayer(Object* obj, int new_layer_id) {
 
 void Canvas::renameLayer(int id, const QString& new_name) {
     if (ID_IN_BOUNDS(id)) m_layers[id]->setName(new_name);
+}
+
+void Canvas::clearCanvas() {
+    // ЗАЩИТА ОТ КРАША: Снимаем выделение до того, как начнем разрушать объекты
+    if (m_parent_sceene) {
+        m_parent_sceene->clearSelection();
+    }
+
+    while (!m_layers.empty()) {
+        deleteLayer(0);
+    }
+    m_layer_counter = 0;
+}
+
+void Canvas::setSize(int w, int h) {
+    m_canvas_size = QSize(w, h);
+    if (m_bg_item) {
+        m_bg_item->setRect(0, 0, w, h);
+    }
+    renderCanvas();
 }

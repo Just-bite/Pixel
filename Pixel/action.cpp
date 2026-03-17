@@ -1,14 +1,28 @@
 #include "action.h"
 
 AddObjectCommand::AddObjectCommand(QGraphicsItem* pLayer, QGraphicsItem* obj, QUndoCommand *p) : QUndoCommand(p), m_parent_layer(pLayer), m_object(obj) { setText("Add Figure"); }
-AddObjectCommand::~AddObjectCommand() { if (!m_object->scene() && !m_object->parentItem()) delete m_object; }
-void AddObjectCommand::undo() { m_object->setParentItem(nullptr); if (m_object->scene()) m_object->scene()->removeItem(m_object); }
-void AddObjectCommand::redo() { m_object->setParentItem(m_parent_layer); }
+AddObjectCommand::~AddObjectCommand() {
+    if (!m_object->scene() && !m_object->parentItem()) delete m_object;
+}
+void AddObjectCommand::undo() {
+    m_object->setParentItem(nullptr);
+    if (QGraphicsScene* s = m_object->scene()) s->removeItem(m_object);
+}
+void AddObjectCommand::redo() {
+    m_object->setParentItem(m_parent_layer);
+}
 
 DeleteObjectCommand::DeleteObjectCommand(QGraphicsItem* pLayer, QGraphicsItem* obj, QUndoCommand *p) : QUndoCommand(p), m_parent_layer(pLayer), m_object(obj) { setText("Delete Figure"); }
-DeleteObjectCommand::~DeleteObjectCommand() { if (!m_object->scene() && !m_object->parentItem()) delete m_object; }
-void DeleteObjectCommand::undo() { m_object->setParentItem(m_parent_layer); }
-void DeleteObjectCommand::redo() { m_object->setParentItem(nullptr); if (m_object->scene()) m_object->scene()->removeItem(m_object); }
+DeleteObjectCommand::~DeleteObjectCommand() {
+    if (!m_object->scene() && !m_object->parentItem()) delete m_object;
+}
+void DeleteObjectCommand::undo() {
+    m_object->setParentItem(m_parent_layer);
+}
+void DeleteObjectCommand::redo() {
+    m_object->setParentItem(nullptr);
+    if (QGraphicsScene* s = m_object->scene()) s->removeItem(m_object);
+}
 
 ModifyFigureCommand::ModifyFigureCommand(Figure* fig, const FigureState& oState, const FigureState& nState, QUndoCommand *p) : QUndoCommand(p), m_figure(fig), m_old_state(oState), m_new_state(nState) { setText("Modify Figure"); }
 void ModifyFigureCommand::undo() { if (m_figure) m_figure->setState(m_old_state); }

@@ -45,3 +45,14 @@ LayerInfo Layer::getInfo() const { return LayerInfo{m_name, m_visible, m_locked}
 
 QRectF Layer::boundingRect() const { return QRectF(); }
 void Layer::paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget *) {}
+
+std::vector<Object*> Layer::getObjects() const {
+    std::vector<Object*> res;
+    // Проходимся по всем детям слоя и выбираем только наши Object
+    for (QGraphicsItem* item : childItems()) {
+        if (Object* obj = dynamic_cast<Object*>(item)) {
+            res.push_back(obj);
+        }
+    }
+    return res;
+}

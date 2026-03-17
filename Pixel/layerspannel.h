@@ -5,11 +5,10 @@
 #include <QHBoxLayout>
 #include <QWidget>
 #include <QPushButton>
-#include <QLabel>
+#include <QLineEdit> // Заменили QLabel
 #include <QScrollArea>
 #include <vector>
 #include "canvas.h"
-#include <QLineEdit>
 
 class LayerWidget : public QWidget {
     Q_OBJECT
@@ -38,6 +37,7 @@ signals:
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
+    bool eventFilter(QObject *obj, QEvent *event) override; // НОВОЕ: Для перехвата клика по тексту
 
 private slots:
     void onVisibleToggled(bool checked);
@@ -47,7 +47,7 @@ private:
     static constexpr int BTN_SIZE = 30;
     QHBoxLayout* m_layout;
     QPushButton *m_lock_btn, *m_eye_btn, *m_up_btn, *m_down_btn, *m_delete_btn;
-    QLineEdit* m_layer_name;
+    QLineEdit* m_layer_name; // НОВОЕ: Поле для текста
     int m_index = 0;
     bool m_is_selected = false;
 };
@@ -56,10 +56,12 @@ class LayersPannel : public QWidget {
     Q_OBJECT
 public:
     explicit LayersPannel(QWidget* parent = nullptr, Canvas* canvas = nullptr);
-    void selectLayerFromOutside(int id); // Для автовыделения при клике на объект
+    void selectLayerFromOutside(int id);
+
+public slots:
+    void updateLayers(); // ТЕПЕРЬ PUBLIC SLOT, чтобы окно могло обновлять панель при загрузке!
 
 private:
-    void updateLayers();
     void refreshSelectionVisuals(int selectedIndex);
 
     static constexpr int BTN_SIZE = 20;

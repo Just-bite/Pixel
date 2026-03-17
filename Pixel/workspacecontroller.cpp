@@ -117,6 +117,74 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                 }
                 return true;
             }
+
+            // ---> ДОБАВЛЕНО: Запоминаем фигуру при клике инструментом POINTER
+            if (mEvent->button() == Qt::LeftButton && m_current_tool == InstrumentType::POINTER) {
+                QGraphicsItem* item = m_view->itemAt(mEvent->pos());
+                Figure* fig = dynamic_cast<Figure*>(item);
+                if (!fig && item && item->parentItem()) {
+                    fig = dynamic_cast<Figure*>(item->parentItem());
+                }
+                if (fig) {
+                    m_drag_target = fig;
+                    m_drag_start_state = fig->getState();
+                } else {
+                    m_drag_target = nullptr;
+                }
+            }
+        }
+
+        if (event->type() == QEvent::MouseMove) {
+            // ... (здесь твой код MouseMove, оставляй без изменений) ...
+            QMouseEvent *mEvent = static_cast<QMouseEvent *>(event);
+            if (m_is_panning) {
+                QPoint delta = mEvent->pos() - m_last_pan_pos;
+                m_view->horizontalScrollBar()->setValue(m_view->horizontalScrollBar()->value() - delta.x());
+                m_view->verticalScrollBar()->setValue(m_view->verticalScrollBar()->value() - delta.y());
+                m_last_pan_pos = mEvent->pos(); return true;
+            }
+            if (m_is_drawing && m_temp_figure) {
+                QPointF cPos = m_view->mapToScene(mEvent->pos());
+                QRectF nRect = QRectF(m_draw_start_pos, cPos).normalized();
+                m_temp_figure->setPos(nRect.center());
+                m_temp_figure->setLocalRect(QRectF(-nRect.width()/2.0, -nRect.height()/2.0, nRect.width(), nRect.height()));
+                return true;
+            }
+        }
+
+        if (event->type() == QEvent::MouseButtonRelease) {
+            QMouseEvent *mEvent = static_cast<QMouseEvent *>(event);
+            if (m_is_panning) { m_is_panning = false; setCurrentTool(m_current_tool); return true; }
+            if (m_is_drawing && mEvent->button() == Qt::LeftButton) {
+                m_is_drawing = false;
+                if (m_temp_figure) {
+                    QRectF r = m_temp_figure->getLocalRect();
+                    if (r.width() < 3.0 || r.height() < 3.0) {
+                        m_temp_figure->setParentItem(nullptr); if (m_temp_figure->scene()) m_temp_figure->scene()->removeItem(m_temp_figure); delete m_temp_figure;
+                    } else { m_undo_stack->push(new AddObjectCommand(m_temp_figure->parentItem(), m_temp_figure)); m_temp_figure->setSelected(true); }
+                    m_temp_figure = nullptr;
+                }
+                return true;
+            }
+
+            // ---> ДОБАВЛЕНО: Записываем Undo при отпускании кнопки
+            if (mEvent->button() == Qt::LeftButton && m_current_tool == InstrumentType::POINTER) {
+                if (m_drag_target) {
+                    FigureState newState = m_drag_target->getState();
+                    // Проверяем: фигура сдвинулась, и TransformBox НЕ обрабатывал это сам?
+                    bool handledByTransformBox = (m_transform_box && m_transform_box->isInteracting());
+
+                    if (!handledByTransformBox && newState != m_drag_start_state) {
+                        m_undo_stack->push(new ModifyFigureCommand(m_drag_target, m_drag_start_state, newState));
+
+                        // Если фигура выделена, обновим координаты в контекстном меню
+                        if (m_drag_target == m_selected_figure) {
+                            m_context_pannel->setTarget(m_selected_figure);
+                        }
+                    }
+                    m_drag_target = nullptr; // Сбрасываем цель
+                }
+            }
         }
 
         if (event->type() == QEvent::MouseMove) {
