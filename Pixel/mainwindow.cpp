@@ -84,7 +84,11 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(container_main);
     updateInfoPanel();
 
-    m_workspace_controller = new WorkspaceController(m_view_main, m_scene_main, m_project_manager, m_context_pannel_layout, palette_widget, this);
+    m_workspace_controller = new WorkspaceController(
+        m_view_main, m_scene_main, m_project_manager,
+        m_context_pannel_layout, palette_widget, m_layers_pannel,
+        this);
+
     connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
     connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
 
