@@ -63,12 +63,6 @@ MainWindow::MainWindow(QWidget *parent)
     Layer *layer1 = new Layer("layer1");
     Layer *layer2 = new Layer("layer2");
 
-    Ellipse *e1 = new Ellipse(QRectF(270, 270, 60, 60));
-    Ellipse *e2 = new Ellipse(QRectF(230, 270, 120, 120));
-
-    layer1->addObject(e1);
-    layer2->addObject(e2);
-
     canvas->addLayer(layer1);
     canvas->addLayer(layer2);
 

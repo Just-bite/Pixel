@@ -2,7 +2,6 @@
 #include "action.h"
 #include <QApplication>
 
-// ИСПОЛЬЗУЕМ ПЕРЕДАННУЮ СЦЕНУ ДЛЯ ПОДКЛЮЧЕНИЯ
 WorkspaceController::WorkspaceController(QGraphicsView* view, QGraphicsScene* scene, ProjectManager* projectManager, QObject *parent)
     : QObject(parent)
     , m_view(view)
@@ -21,8 +20,6 @@ WorkspaceController::WorkspaceController(QGraphicsView* view, QGraphicsScene* sc
     }
 }
 
-// ... остальной код файла без изменений ...
-
 void WorkspaceController::setCurrentTool(InstrumentType type)
 {
     m_current_tool = type;
@@ -37,6 +34,7 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
 {
     if (!m_view || !m_project_manager) return QObject::eventFilter(obj, event);
 
+    // ОБРАБОТКА НАЖАТИЙ КЛАВИАТУРЫ
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
 
@@ -65,8 +63,20 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
             return true;
         }
     }
+    // ОБРАБОТКА ОТПУСКАНИЯ КЛАВИАТУРЫ
+    else if (event->type() == QEvent::KeyRelease) {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Space && !keyEvent->isAutoRepeat()) {
+            m_space_pressed = false;
+            if (!m_is_panning) setCurrentTool(m_current_tool);
+            return true;
+        }
+    }
 
+    // ОБРАБОТКА МЫШИ НА VIEWPORT
     if (obj == m_view->viewport() || obj == m_view) {
+
+        // ЗУМ (Колесико)
         if (event->type() == QEvent::Wheel) {
             QWheelEvent *wheelEvent = static_cast<QWheelEvent *>(event);
             m_view->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
@@ -77,6 +87,7 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
             return true;
         }
 
+        // КЛИК МЫШЬЮ
         if (event->type() == QEvent::MouseButtonPress) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
 
@@ -106,6 +117,7 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
             }
         }
 
+        // ДВИЖЕНИЕ МЫШИ
         if (event->type() == QEvent::MouseMove) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
 
@@ -120,13 +132,20 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
             if (m_is_drawing && m_temp_ellipse && m_current_tool == InstrumentType::FIGURE) {
                 QPointF currentPos = m_view->mapToScene(mouseEvent->pos());
                 QRectF newRect = QRectF(m_draw_start_pos, currentPos).normalized();
-                m_temp_ellipse->setRect(newRect);
+
+                // МАГИЯ ЦЕНТРА:
+                // 1. Ставим позицию объекта строго в центр нарисованной области
+                m_temp_ellipse->setPos(newRect.center());
+                // 2. Рисуем геометрию вокруг локального (0,0)
+                m_temp_ellipse->setRect(QRectF(-newRect.width() / 2.0, -newRect.height() / 2.0, newRect.width(), newRect.height()));
+
                 return true;
             }
 
             if (m_current_tool == InstrumentType::POINTER) return false;
         }
 
+        // ОТПУСКАНИЕ МЫШИ
         if (event->type() == QEvent::MouseButtonRelease) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
 
@@ -142,7 +161,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
                 if (m_temp_ellipse) {
                     m_temp_ellipse->setRect(m_temp_ellipse->getRect().normalized());
                     m_undo_stack->push(new AddObjectCommand(m_temp_ellipse->parentItem(), m_temp_ellipse));
-
                     m_temp_ellipse->setSelected(true);
                 }
                 m_temp_ellipse = nullptr;
@@ -170,11 +188,10 @@ void WorkspaceController::onSelectionChanged()
     if (selected.size() == 1) {
         QGraphicsItem* item = selected.first();
 
-        // Так как фон и слои не выделяемы, это 100% объект Фигуры.
-        // Просто создаем рамку и привязываем к нему!
-        m_transform_box = new TransformBox(item);
+        // ИСПРАВЛЕННЫЙ КОД: Создаем новую рамку с 8 узлами и ПЕРЕДАЕМ ЕЙ ИСТОРИЮ
+        m_transform_box = new TransformBox(item, m_undo_stack);
 
-        qDebug() << "[Controller] TransformBox CREATED successfully for item!";
+        qDebug() << "[Controller] TransformBox CREATED successfully with 8 handles!";
     } else {
         qDebug() << "[Controller] Selection cleared or multiple items selected.";
     }

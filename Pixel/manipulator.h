@@ -4,18 +4,17 @@
 #include <QGraphicsObject>
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
+#include <QUndoStack>
 
 class TransformBox : public QGraphicsObject
 {
     Q_OBJECT
 public:
-    explicit TransformBox(QGraphicsItem *parent = nullptr);
+    explicit TransformBox(QGraphicsItem *parent, QUndoStack* undoStack);
 
-    QRectF boundingRect() const override;
     QRectF targetRect() const;
+    QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
-
-    // ЭТОТ МЕТОД СПАСЕТ НАС ОТ БЛОКИРОВКИ МЫШИ
     QPainterPath shape() const override;
 
 protected:
@@ -24,16 +23,29 @@ protected:
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
 
 private:
-    enum InteractionState { None, ResizeBottomRight, Rotate };
+    QUndoStack* m_undo_stack;
+
+    enum InteractionState {
+        None, Rotate,
+        ResizeTL, ResizeTC, ResizeTR,
+        ResizeML, ResizeMR,
+        ResizeBL, ResizeBC, ResizeBR
+    };
     InteractionState m_state = None;
 
-    QRectF m_target_rect;
-    QPointF m_click_pos;
-    qreal m_start_scale;
+    // Данные для безупречной математики
+    QPointF m_start_pos;
     qreal m_start_rotation;
+    QTransform m_start_transform;
+    QRectF m_start_rect;
 
-    QRectF bottomRightHandle() const;
-    QRectF topRotateHandle() const;
+    QPointF m_fixed_local_point;
+    QPointF m_fixed_scene_point;
+    QTransform m_initial_scene_transform;
+
+    QRectF handleRect(int xPos, int yPos) const;
+    QRectF rotateHandle() const;
+    QPointF getFixedPoint(InteractionState state, QRectF rect) const;
 };
 
 #endif // MANIPULATOR_H
