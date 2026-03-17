@@ -33,7 +33,8 @@ public slots:
     void onContextPropertyChanged();
     void onColorTargetChanged(bool isFill);
     void onColorPicked(const QColor& color);
-
+    void onColorPickedPreview(const QColor& color);
+    void onColorPickedCommit(const QColor& color);
 signals:
     void viewportChanged();
 
@@ -62,6 +63,13 @@ private:
     Figure* m_temp_figure = nullptr;
 
     bool m_color_target_is_fill = true;
+
+    FigureState m_state_before_preview;
+    bool m_is_previewing = false;
+
+    // Clipboard
+    FigureState m_clipboard_state;
+    bool m_has_clipboard = false;
 };
 
 #endif // WORKSPACECONTROLLER_H
