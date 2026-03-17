@@ -33,7 +33,9 @@ public:
 
     void actOnSelectedArea(Canvas* canvas, ToolActArg arg) override
     {
-        Ellipse* el = new Ellipse(arg.first, 20, nullptr);
+        // Создаем прямоугольник 40x40 вокруг кликнутой точки
+        QRectF rect(arg.first.x() - 20, arg.first.y() - 20, 40, 40);
+        Ellipse* el = new Ellipse(rect);
         el->setFillColor(Qt::cyan);
         canvas->addObjectToSelectedLayer(el);
     }

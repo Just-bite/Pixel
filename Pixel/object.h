@@ -60,22 +60,18 @@ class Ellipse : public Shape
 {
     Q_OBJECT
 public:
-    Ellipse(const QPointF& center, qreal radius, QGraphicsItem* parent = nullptr);
+    Ellipse(const QRectF& rect, QGraphicsItem* parent = nullptr);
     explicit Ellipse(QGraphicsItem* parent = nullptr);
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
     QRectF boundingRect() const override;
     QPainterPath shape() const override;
 
-    void setCenter(const QPointF& center);
-    QPointF getCenter() const;
-
-    void setRadius(qreal radius);
-    qreal getRadius() const;
+    void setRect(const QRectF& rect);
+    QRectF getRect() const;
 
 private:
-    QPointF m_center;
-    qreal m_radius;
+    QRectF m_rect;
 };
 
 #endif // OBJECT_H

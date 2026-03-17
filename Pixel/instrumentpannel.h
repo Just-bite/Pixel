@@ -3,12 +3,10 @@
 
 #include <QVBoxLayout>
 #include <QPushButton>
+#include <QButtonGroup> // Добавили для эксклюзивного выбора кнопок
 #include <QStyle>
 #include <QString>
 #include <unordered_map>
-
-#include "contextpannel.h"
-//#include "projectmanager.h"
 
 enum class InstrumentType
 {
@@ -21,13 +19,17 @@ enum class InstrumentType
     FIGURE,
 };
 
-
 class InstrumentPannel : public QWidget
 {
     Q_OBJECT
 public:
-    explicit InstrumentPannel(QWidget* parent = nullptr/*, ProjectManager* manager = nullptr*/);
+    explicit InstrumentPannel(QWidget* parent = nullptr);
     const QVBoxLayout& getLayout() const;
+
+signals:
+    // Сигнал, сообщающий Контроллеру, что инструмент сменился
+    void instrumentSelected(InstrumentType type);
+
 private:
     void createButtonsArray(QWidget* parent);
     void fillInstumentIcon();
@@ -37,8 +39,9 @@ private:
     static constexpr int MAX_INSTRUMENTS_AMOUNT = 16;
     static constexpr int INSTURMENT_BTN_SIZE = 32;
     QVBoxLayout* m_instrument_pannel_layout;
-    //ProjectManager* m_project_manager;
+
     std::vector<QPushButton*> m_bttns_instruments;
+    QButtonGroup* m_button_group; // Группа кнопок
     std::unordered_map<InstrumentType,std::pair<QIcon,QString>> m_instrument_icon;
 };
 

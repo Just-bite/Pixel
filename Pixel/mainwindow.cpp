@@ -41,7 +41,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Слушаем события View и его Viewport
     m_workspace_controller = new WorkspaceController(m_view_main, m_project_manager, this);
+    connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
     connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
+
     m_view_main->viewport()->installEventFilter(this);
     m_view_main->setScene(m_scene_main);
 
@@ -60,8 +62,8 @@ MainWindow::MainWindow(QWidget *parent)
     Layer *layer1 = new Layer("layer1");
     Layer *layer2 = new Layer("layer2");
 
-    Ellipse *e1 = new Ellipse(QPointF(300, 300), 30);
-    Ellipse *e2 = new Ellipse(QPointF(260, 300), 60);
+    Ellipse *e1 = new Ellipse(QRectF(270, 270, 60, 60));
+    Ellipse *e2 = new Ellipse(QRectF(230, 270, 120, 120));
 
     layer1->addObject(e1);
     layer2->addObject(e2);
