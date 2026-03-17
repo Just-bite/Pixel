@@ -18,10 +18,18 @@ public:
     void updateScaleDisplay(float scale);
     const QHBoxLayout& getLayout() const;
 
+signals:
+    // Сигналы для связи с MainWindow
+    void zoomInRequested();
+    void zoomOutRequested();
+    void fitRequested();
+    void scaleChanged(float newScale);
+
 private:
     std::pair<int, int> m_canvas_size;
     QPushButton* m_btn_decrease;
     QPushButton* m_btn_increase;
+    QPushButton* m_btn_fit; // Новая кнопка
     QLineEdit* m_scale_edit;
     QLabel* m_scale_label;
     QLabel* m_canvas_size_label;
@@ -30,7 +38,7 @@ private:
 
 public slots:
     void updateDisplay();
-
+    void onScaleEditFinished(); // Слот для ручного ввода
 };
 
 #endif // INFOPANNEL_H
