@@ -1,50 +1,71 @@
 #include "object.h"
 
-Ellipse::Ellipse(const QRectF& rect, QGraphicsItem* parent)
-    : Shape(parent), m_rect(rect)
+Figure::Figure(const QRectF& rect, FigureType type, QGraphicsItem* parent)
+    : Object(parent)
 {
-    setFillColor(Qt::red);
+    m_state.rect = rect;
+    m_state.type = type;
+    m_state.fill = QColor(Qt::cyan);
+    m_state.stroke = QColor(Qt::black);
+    m_state.thickness = 2.0f;
+    m_state.pos = QPointF(0, 0);
+    m_state.rot = 0.0;
 }
 
-Ellipse::Ellipse(QGraphicsItem* parent)
-    : Shape(parent), m_rect(0,0,0,0)
-{
-    setFillColor(Qt::red);
-}
+Figure::Figure(QGraphicsItem* parent) : Figure(QRectF(0,0,0,0), FigureType::Ellipse, parent) {}
 
-void Ellipse::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+void Figure::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
 
-    painter->setPen(QPen(m_strokeColor, m_strokeWidth));
-    if (m_filled) painter->setBrush(QBrush(m_fillColor));
-    else painter->setBrush(Qt::NoBrush);
+    painter->setPen(QPen(m_state.stroke, m_state.thickness));
+    painter->setBrush(m_state.fill.alpha() > 0 ? QBrush(m_state.fill) : Qt::NoBrush);
 
-    // Рисуем эллипс, вписанный в прямоугольник!
-    painter->drawEllipse(m_rect);
+    if (m_state.type == FigureType::Ellipse)
+        painter->drawEllipse(m_state.rect);
+    else if (m_state.type == FigureType::Rectangle)
+        painter->drawRect(m_state.rect);
+
     painter->restore();
 }
 
-QRectF Ellipse::boundingRect() const
+QRectF Figure::boundingRect() const
 {
-    qreal pen_offset = m_strokeWidth / 2.0;
-    // Границы - это наш прямоугольник + толщина линии
-    return m_rect.adjusted(-pen_offset, -pen_offset, pen_offset, pen_offset);
+    qreal offset = m_state.thickness / 2.0;
+    return m_state.rect.adjusted(-offset, -offset, offset, offset);
 }
 
-QPainterPath Ellipse::shape() const
+QPainterPath Figure::shape() const
 {
     QPainterPath path;
-    path.addEllipse(m_rect);
+    if (m_state.type == FigureType::Ellipse) path.addEllipse(m_state.rect);
+    else path.addRect(m_state.rect);
     return path;
 }
 
-void Ellipse::setRect(const QRectF& rect)
+void Figure::setLocalRect(const QRectF& rect)
 {
     prepareGeometryChange();
-    m_rect = rect;
+    m_state.rect = rect;
     update();
 }
 
-QRectF Ellipse::getRect() const { return m_rect; }
+QRectF Figure::getLocalRect() const { return m_state.rect; }
+
+FigureState Figure::getState() const
+{
+    FigureState s = m_state;
+    s.pos = pos();
+    s.rot = rotation();
+    return s;
+}
+
+void Figure::setState(const FigureState& state)
+{
+    prepareGeometryChange();
+    m_state = state;
+    setPos(state.pos);
+    setRotation(state.rot);
+    update();
+}

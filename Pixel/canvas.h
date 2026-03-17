@@ -3,48 +3,52 @@
 
 #include <QObject>
 #include <QPainter>
-#include <QDebug>
 #include <QGraphicsScene>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
-#include <unordered_map>
+#include <vector>
 
 #include "layer.h"
 #include "object.h"
 
-class Canvas : public QObject
-{
+class Canvas : public QObject {
     Q_OBJECT
-
 public:
     explicit Canvas(QObject* parent = nullptr);
 
     void addLayer(Layer* layer);
     void newLayer();
-    void draw(QPainter* painter) const;
     void deleteLayer(const int id);
     void renderCanvas();
     void setScene(QGraphicsScene* scene) { m_parent_sceene = scene; }
     void moveLayer(int id, int shift);
+    void setSize(int w, int h);
+
+    const std::vector<Layer*>& getLayers() const { return m_layers; }
+    QGraphicsScene* getScene() const { return m_parent_sceene; }
+    void clearCanvas();
+
     void selectLayer(int id);
-    int getSelectedLayerid() { return m_selected_index; }
+    int getSelectedLayerid() const { return m_selected_index; }
+
+    void setLayerVisible(int id, bool visible);
+    void setLayerLocked(int id, bool locked);
+
     void addObjectToSelectedLayer(Object* obj);
+    void moveObjectToLayer(Object* obj, int new_layer_id); // Для контекстного меню
+    int getLayerIdOfObject(Object* obj) const;
 
     std::vector<LayerInfo> getLayersInfo() const;
-
     QSize getSize() const { return m_canvas_size; }
-
+    void renameLayer(int id, const QString& new_name);
 private:
     std::vector<Layer*> m_layers;
     QGraphicsScene* m_parent_sceene;
     Layer* m_selected;
     int m_selected_index;
-
     QSize m_canvas_size;
-
-    // Рендер-элементы
-    QGraphicsRectItem* m_bg_item; // Белый фон холста
-    std::unordered_map<Layer*, QGraphicsPixmapItem*> m_layer_items; // Текстуры слоев
+    QGraphicsRectItem* m_bg_item;
+    int m_layer_counter;
 };
 
 #endif // CANVAS_H

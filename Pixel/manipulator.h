@@ -17,6 +17,8 @@ public:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
     QPainterPath shape() const override;
 
+    bool isInteracting() const { return m_state != None; }
+
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
@@ -33,19 +35,13 @@ private:
     };
     InteractionState m_state = None;
 
-    // Данные для безупречной математики
     QPointF m_start_pos;
     qreal m_start_rotation;
-    QTransform m_start_transform;
     QRectF m_start_rect;
-
-    QPointF m_fixed_local_point;
-    QPointF m_fixed_scene_point;
     QTransform m_initial_scene_transform;
 
     QRectF handleRect(int xPos, int yPos) const;
     QRectF rotateHandle() const;
-    QPointF getFixedPoint(InteractionState state, QRectF rect) const;
 };
 
 #endif // MANIPULATOR_H
