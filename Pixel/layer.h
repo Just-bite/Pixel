@@ -1,8 +1,7 @@
 #ifndef LAYER_H
 #define LAYER_H
 
-#include <QPainter>
-#include <QObject>
+#include <QGraphicsObject>
 #include <QString>
 #include <vector>
 
@@ -15,22 +14,22 @@ struct LayerInfo
     bool locked;
 };
 
-class Layer : public QObject
+// Теперь Layer - это невидимый контейнер (папка) на сцене Qt
+class Layer : public QGraphicsObject
 {
     Q_OBJECT
 public:
-    explicit Layer(QObject* parent = nullptr);
-    explicit Layer(const QString& name, QObject* parent = nullptr);
+    explicit Layer(QGraphicsItem* parent = nullptr);
+    explicit Layer(const QString& name, QGraphicsItem* parent = nullptr);
 
     ~Layer();
 
-    void draw(QPainter* painter) const;
     void addObject(Object* object);
 
     void setName(const QString& name) { m_name = name; }
     QString getName() const { return m_name; }
 
-    void setVisible(const bool vissible) { m_visible = vissible; }
+    void setVisible(bool visible); // Изменим реализацию
     bool isVisible() const { return m_visible; }
 
     void setLocked(const bool locked) { m_locked = locked; }
@@ -38,7 +37,9 @@ public:
 
     LayerInfo getInfo() const;
 
-
+    // Обязательные методы QGraphicsItem (оставим их пустыми, слой сам себя не рисует)
+    virtual QRectF boundingRect() const override;
+    virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
 private:
     bool m_visible;

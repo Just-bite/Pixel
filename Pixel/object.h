@@ -1,68 +1,49 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
-#include <QObject>
+#include <QGraphicsObject>
 #include <QPainter>
+#include <QPen>
+#include <QBrush>
+#include <QStyleOptionGraphicsItem>
 
-class Object;
-
-class Object : public QObject
+class Object : public QGraphicsObject
 {
     Q_OBJECT
 public:
-    explicit Object(QObject* parent = nullptr) {};
+    explicit Object(QGraphicsItem* parent = nullptr) : QGraphicsObject(parent) {
+        // Включаем встроенную магию Qt: объект можно выделять и таскать мышкой!
+        setFlag(QGraphicsItem::ItemIsSelectable, true);
+        setFlag(QGraphicsItem::ItemIsMovable, true);
+        setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    }
     virtual ~Object() = default;
 
-    virtual void draw(QPainter* painter) const = 0;
-    virtual bool contains(const QPointF& point) const = 0;
-    virtual QRectF boundingRect() const = 0;
-
-    void setPosition(const QPointF& pos);
-    QPointF position() const;
-
-    void setRotation(float angle);
-    float getRotation() const;
-
-    void setScale(float scale);
-    float getScale() const;
-
-    void setVisible(bool visible);
-    bool isVisible() const;
-
-    void move(const QPointF& delta);
-    void rotate(float angle);
-    void scaleBy(float factor);
-
-protected:
-    QPointF m_position;
-    float m_rotation;
-    float m_scale;
-    bool m_visible;
+    // Эти методы требует QGraphicsItem
+    virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override = 0;
+    virtual QRectF boundingRect() const override = 0;
+    virtual QPainterPath shape() const override = 0;
 };
-
 
 class StyleObject : public Object
 {
     Q_OBJECT
 public:
-    explicit StyleObject(QObject* parent = nullptr) {};
+    explicit StyleObject(QGraphicsItem* parent = nullptr) : Object(parent), m_opacity(1.0) {}
 
-    void setFillColor(const QColor& color);
-    QColor fillColor() const;
+    void setFillColor(const QColor& color) { m_fillColor = color; update(); }
+    QColor fillColor() const { return m_fillColor; }
 
-    void setStrokeColor(const QColor& color);
-    QColor getStrokeColor() const;
+    void setStrokeColor(const QColor& color) { m_strokeColor = color; update(); }
+    QColor getStrokeColor() const { return m_strokeColor; }
 
-    void setStrokeWidth(float width);
-    float getStrokeWidth() const;
-
-    void setOpacity(float opacity);
-    float getOpacity() const;
+    void setStrokeWidth(float width) { m_strokeWidth = width; update(); }
+    float getStrokeWidth() const { return m_strokeWidth; }
 
 protected:
-    QColor m_fillColor;
-    QColor m_strokeColor;
-    float m_strokeWidth;
+    QColor m_fillColor = Qt::transparent;
+    QColor m_strokeColor = Qt::black;
+    float m_strokeWidth = 2.0f;
     float m_opacity;
 };
 
@@ -70,27 +51,21 @@ class Shape : public StyleObject
 {
     Q_OBJECT
 public:
-    explicit Shape(QObject* parent = nullptr) {};
-
-    void setFilled(bool filled);
-    bool isFilled() const;
-
+    explicit Shape(QGraphicsItem* parent = nullptr) : StyleObject(parent), m_filled(true) {}
 protected:
     bool m_filled;
 };
-
 
 class Ellipse : public Shape
 {
     Q_OBJECT
 public:
-    Ellipse(const QPointF& center, qreal radius, QObject* parent = nullptr);
-    Ellipse(qreal x, qreal y, qreal radius, QObject* parent = nullptr);
-    explicit Ellipse(QObject* parent = nullptr);
+    Ellipse(const QPointF& center, qreal radius, QGraphicsItem* parent = nullptr);
+    explicit Ellipse(QGraphicsItem* parent = nullptr);
 
-    void draw(QPainter* painter) const override;
-    bool contains(const QPointF& point) const override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
     QRectF boundingRect() const override;
+    QPainterPath shape() const override;
 
     void setCenter(const QPointF& center);
     QPointF getCenter() const;
@@ -102,81 +77,5 @@ private:
     QPointF m_center;
     qreal m_radius;
 };
-
-class Rectangle : public Shape
-{
-    Q_OBJECT
-public:
-    Rectangle(const QRectF& rect, QObject* parent = nullptr);
-    Rectangle(qreal x, qreal y, qreal width, qreal height, QObject* parent = nullptr);
-
-    void draw(QPainter* painter) const override {};
-    bool contains(const QPointF& point) const override {};
-    QRectF boundingRect() const override {};
-
-    void setRect(const QRectF& rect);
-    QRectF getRect() const;
-
-    void setSize(const QSizeF& size);
-    QSizeF getSize() const;
-
-    void setCornerRadius(qreal radius);
-    qreal getCornerRadius() const;
-
-private:
-    QRectF m_rect;
-    qreal m_cornerRadius;
-};
-
-
-class Text : public StyleObject
-{
-    Q_OBJECT
-public:
-    explicit Text(const QString& text = QString(), QObject* parent = nullptr);
-
-    void draw(QPainter* painter) const override {};
-    bool contains(const QPointF& point) const override {};
-    QRectF boundingRect() const override {};
-
-    void setText(const QString& text);
-    QString getText() const;
-
-    void setFont(const QFont& font);
-    QFont getFont() const;
-
-    void setAlignment(Qt::Alignment alignment);
-    Qt::Alignment getAlignment() const;
-
-private:
-    QString m_text;
-    QFont m_font;
-    Qt::Alignment m_alignment;
-};
-
-
-class Line : public StyleObject
-{
-    Q_OBJECT
-public:
-    Line(const QPointF& start, const QPointF& end, QObject* parent = nullptr);
-
-    void draw(QPainter* painter) const override {};
-    bool contains(const QPointF& point) const override {};
-    QRectF boundingRect() const override {};
-
-    void setStartPoint(const QPointF& point);
-    QPointF getStartPoint() const;
-
-    void setEndPoint(const QPointF& point);
-    QPointF getEndPoint() const;
-
-    void setLine(const QPointF& start, const QPointF& end);
-
-private:
-    QPointF m_start;
-    QPointF m_end;
-};
-
 
 #endif // OBJECT_H

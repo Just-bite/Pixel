@@ -30,7 +30,8 @@ SOURCES += \
     palettepannel.cpp \
     project.cpp \
     projectmanager.cpp \
-    tool.cpp
+    tool.cpp \
+    workspacecontroller.cpp
 
 HEADERS += \
     action.h \
@@ -46,7 +47,8 @@ HEADERS += \
     palettepannel.h \
     project.h \
     projectmanager.h \
-    tool.h
+    tool.h \
+    workspacecontroller.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

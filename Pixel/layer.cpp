@@ -1,16 +1,15 @@
 #include "layer.h"
-
 #include <QDebug>
 
-Layer::Layer(QObject* parent)
-    : QObject(parent)
+Layer::Layer(QGraphicsItem* parent)
+    : QGraphicsObject(parent)
     , m_visible(true)
     , m_locked(false)
 {
 }
 
-Layer::Layer(const QString& name, QObject* parent)
-    : QObject(parent)
+Layer::Layer(const QString& name, QGraphicsItem* parent)
+    : QGraphicsObject(parent)
     , m_visible(true)
     , m_locked(false)
     , m_name(name)
@@ -21,31 +20,27 @@ Layer::~Layer()
 {
     qDebug() << "deleting layer";
     for (Object* i : m_objects)
-        delete i;
+        delete i; // При удалении слоя удаляем и объекты
 }
 
 void Layer::addObject(Object* object)
 {
-    object->setParent(this);
     m_objects.push_back(object);
+    // Магия Qt: привязываем графический объект к этому слою-контейнеру
+    object->setParentItem(this);
 }
 
-void Layer::draw(QPainter* painter) const
+void Layer::setVisible(bool visible)
 {
-    if (!m_visible)
-        return;
-
-    for (const auto& obj : m_objects) {
-        obj->draw(painter);
-    }
+    m_visible = visible;
+    QGraphicsObject::setVisible(visible); // Встроенная функция Qt скроет все дочерние объекты!
 }
 
 LayerInfo Layer::getInfo() const
 {
-    return LayerInfo
-        {
-            m_name,
-            m_visible,
-            m_locked
-        };
+    return LayerInfo{m_name, m_visible, m_locked};
 }
+
+// Слой сам по себе невидимый, поэтому методы пустые
+QRectF Layer::boundingRect() const { return QRectF(); }
+void Layer::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) { Q_UNUSED(painter); Q_UNUSED(option); Q_UNUSED(widget); }
