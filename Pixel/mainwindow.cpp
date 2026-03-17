@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QTimer>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -10,8 +11,6 @@ MainWindow::MainWindow(QWidget *parent)
     , m_project_manager(new ProjectManager(this))
 {
     ui->setupUi(this);
-
-    createMenuBar();
 
     QWidget *container_main = new QWidget(this);
     QVBoxLayout *container_layout = new QVBoxLayout(container_main);
@@ -92,6 +91,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
     connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
 
+    createMenuBar();
     QTimer::singleShot(0, this, &MainWindow::onFitToScreen);
 }
 
@@ -100,36 +100,55 @@ void MainWindow::createMenuBar()
     QMenuBar *menu_bar = this->menuBar();
     QMenu *file_menu = menu_bar->addMenu("&File");
 
-    QAction *create_action = file_menu->addAction("&Create file or project");
+    // File
+    QAction *create_action = file_menu->addAction("&New Project");
     connect(create_action, &QAction::triggered, m_project_manager, &ProjectManager::createFile);
     create_action->setShortcut(QKeySequence::New);
 
-    QAction *open_action = file_menu->addAction("&Open file or project");
+    QAction *open_action = file_menu->addAction("&Open Project...");
     connect(open_action, &QAction::triggered, m_project_manager, &ProjectManager::openFile);
     open_action->setShortcut(QKeySequence::Open);
 
-    QAction *save_as_action = file_menu->addAction("&Save project as");
-    connect(save_as_action, &QAction::triggered, m_project_manager, &ProjectManager::saveAsFile);
-    save_as_action->setShortcut(QKeySequence::SaveAs);
-
-    QAction *save_action = file_menu->addAction("&Save project");
+    QAction *save_action = file_menu->addAction("&Save Project");
     connect(save_action, &QAction::triggered, m_project_manager, &ProjectManager::saveFile);
     save_action->setShortcut(QKeySequence::Save);
 
-    QAction *close_action = file_menu->addAction("&Close project");
-    connect(close_action, &QAction::triggered, m_project_manager, &ProjectManager::closeFile);
-    close_action->setShortcut(QKeySequence::Close);
+    QAction *save_as_action = file_menu->addAction("Save Project &As...");
+    connect(save_as_action, &QAction::triggered, m_project_manager, &ProjectManager::saveAsFile);
+    save_as_action->setShortcut(QKeySequence::SaveAs);
 
-    QAction *print_action = file_menu->addAction("&Print");
-    connect(print_action, &QAction::triggered, m_project_manager, &ProjectManager::printFile);
-    print_action->setShortcut(QKeySequence::Print);
-
+    // Edit (Undo / Redo)
     QMenu *edit_menu = menu_bar->addMenu("&Edit");
-    edit_menu->addAction("&Undo");
-    edit_menu->addAction("&Redo");
+    if (m_workspace_controller) {
+        QAction* undoAct = m_workspace_controller->getUndoStack()->createUndoAction(this, "&Undo");
+        undoAct->setShortcut(QKeySequence::Undo);
+        edit_menu->addAction(undoAct);
 
+        QAction* redoAct = m_workspace_controller->getUndoStack()->createRedoAction(this, "&Redo");
+        redoAct->setShortcut(QKeySequence::Redo);
+        edit_menu->addAction(redoAct);
+    }
+
+    // View (Камера)
     QMenu *view_menu = menu_bar->addMenu("&View");
+
+    QAction *zoom_in_act = view_menu->addAction("Zoom &In");
+    zoom_in_act->setShortcut(QKeySequence::ZoomIn);
+    connect(zoom_in_act, &QAction::triggered, this, &MainWindow::onZoomIn);
+
+    QAction *zoom_out_act = view_menu->addAction("Zoom &Out");
+    zoom_out_act->setShortcut(QKeySequence::ZoomOut);
+    connect(zoom_out_act, &QAction::triggered, this, &MainWindow::onZoomOut);
+
+    QAction *fit_act = view_menu->addAction("&Fit to Screen");
+    connect(fit_act, &QAction::triggered, this, &MainWindow::onFitToScreen);
+
+    // Help
     QMenu *help_menu = menu_bar->addMenu("&Help");
+    QAction *about_act = help_menu->addAction("&About Pixel");
+    connect(about_act, &QAction::triggered, this, [this](){
+        QMessageBox::about(this, "About Pixel", "Pixel - Vector Graphics Editor\nWritten in C++ with Qt.");
+    });
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)

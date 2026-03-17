@@ -20,6 +20,8 @@ class WorkspaceController : public QObject {
 public:
     explicit WorkspaceController(QGraphicsView* view, QGraphicsScene* scene, ProjectManager* projectManager, ContextPannel* contextPannel, PalettePannel* palettePannel, LayersPannel* layersPannel, QObject *parent = nullptr);
 
+    QUndoStack* getUndoStack() const { return m_undo_stack; }
+
 public slots:
     void setCurrentTool(InstrumentType type);
     void onSelectionChanged();
