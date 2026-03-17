@@ -60,14 +60,6 @@ private:
     ProjectManager *m_project_manager;
     WorkspaceController *m_workspace_controller;
 
-    // Переменные состояния для панорамирования и инструментов
-    bool m_space_pressed = false;
-    bool m_is_panning = false;
-    QPoint m_last_pan_pos;
-    bool m_is_drawing = false; // Состояние для отрисовки инструмента
-    QPointF m_draw_start_pos;
-    Ellipse* m_temp_ellipse = nullptr;
-
 private slots:
     void updateInfoPanel();
 

@@ -164,13 +164,17 @@ void TransformBox::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 void TransformBox::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
     if (m_state != None) {
-        Object* obj = dynamic_cast<Object*>(parentItem());
-        if (obj) {
-            m_undo_stack->push(new TransformObjectCommand(
-                parentItem(),
-                m_start_pos, m_start_rotation, m_start_rect,
-                parentItem()->pos(), parentItem()->rotation(), obj->getLocalRect()
-                ));
+        Figure* fig = dynamic_cast<Figure*>(parentItem());
+        if (fig) {
+            FigureState m_start_state = fig->getState(); // Добавьте m_start_state в хедер или берите из m_start_pos...
+
+            // Чтобы не менять ваш заголовочный файл манипулятора, соберем state до:
+            FigureState startState = fig->getState();
+            startState.pos = m_start_pos;
+            startState.rot = m_start_rotation;
+            startState.rect = m_start_rect;
+
+            m_undo_stack->push(new ModifyFigureCommand(fig, startState, fig->getState()));
         }
         m_state = None;
     } else {

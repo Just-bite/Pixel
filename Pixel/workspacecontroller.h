@@ -3,7 +3,7 @@
 
 #include <QObject>
 #include <QGraphicsView>
-#include <QGraphicsScene> // Добавили
+#include <QGraphicsScene>
 #include <QEvent>
 #include <QMouseEvent>
 #include <QKeyEvent>
@@ -15,18 +15,24 @@
 #include "projectmanager.h"
 #include "object.h"
 #include "instrumentpannel.h"
+#include "contextpannel.h"
+#include "palettepannel.h"
 #include "manipulator.h"
 
 class WorkspaceController : public QObject
 {
     Q_OBJECT
 public:
-    // ТЕПЕРЬ МЫ ЯВНО ПЕРЕДАЕМ СЦЕНУ
-    explicit WorkspaceController(QGraphicsView* view, QGraphicsScene* scene, ProjectManager* projectManager, QObject *parent = nullptr);
+    explicit WorkspaceController(QGraphicsView* view, QGraphicsScene* scene,
+                                 ProjectManager* projectManager, ContextPannel* contextPannel,
+                                 PalettePannel* palettePannel, QObject *parent = nullptr);
 
 public slots:
     void setCurrentTool(InstrumentType type);
     void onSelectionChanged();
+    void onContextPropertyChanged();
+    void onColorTargetChanged(bool isFill);
+    void onColorPicked(const QColor& color);
 
 signals:
     void viewportChanged();
@@ -35,11 +41,16 @@ protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
+    void clearTransformBox();
+
     QGraphicsView* m_view;
     ProjectManager* m_project_manager;
+    ContextPannel* m_context_pannel;
+
     TransformBox* m_transform_box = nullptr;
     QUndoStack* m_undo_stack;
 
+    Figure* m_selected_figure = nullptr;
     InstrumentType m_current_tool = InstrumentType::POINTER;
 
     bool m_space_pressed = false;
@@ -48,7 +59,9 @@ private:
 
     bool m_is_drawing = false;
     QPointF m_draw_start_pos;
-    Ellipse* m_temp_ellipse = nullptr;
+    Figure* m_temp_figure = nullptr;
+
+    bool m_color_target_is_fill = true;
 };
 
 #endif // WORKSPACECONTROLLER_H

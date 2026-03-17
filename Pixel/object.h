@@ -7,7 +7,28 @@
 #include <QBrush>
 #include <QStyleOptionGraphicsItem>
 
-    class Object : public QGraphicsObject
+enum class FigureType {
+    Ellipse,
+    Rectangle
+};
+
+struct FigureState {
+    QPointF pos;
+    qreal rot;
+    QRectF rect;
+    FigureType type;
+    QColor fill;
+    QColor stroke;
+    float thickness;
+
+    bool operator==(const FigureState& o) const {
+        return pos == o.pos && rot == o.rot && rect == o.rect &&
+               type == o.type && fill == o.fill && stroke == o.stroke && thickness == o.thickness;
+    }
+    bool operator!=(const FigureState& o) const { return !(*this == o); }
+};
+
+class Object : public QGraphicsObject
 {
     Q_OBJECT
 public:
@@ -22,62 +43,29 @@ public:
     virtual QRectF boundingRect() const override = 0;
     virtual QPainterPath shape() const override = 0;
 
-    // НОВЫЙ ИНТЕРФЕЙС: Параметрическое изменение геометрии (Путь А)
     virtual void setLocalRect(const QRectF& rect) = 0;
     virtual QRectF getLocalRect() const = 0;
 };
 
-class StyleObject : public Object
+class Figure : public Object
 {
     Q_OBJECT
 public:
-    explicit StyleObject(QGraphicsItem* parent = nullptr) : Object(parent), m_opacity(1.0) {}
-
-    void setFillColor(const QColor& color) { m_fillColor = color; update(); }
-    QColor fillColor() const { return m_fillColor; }
-
-    void setStrokeColor(const QColor& color) { m_strokeColor = color; update(); }
-    QColor getStrokeColor() const { return m_strokeColor; }
-
-    void setStrokeWidth(float width) { m_strokeWidth = width; update(); }
-    float getStrokeWidth() const { return m_strokeWidth; }
-
-protected:
-    QColor m_fillColor = Qt::transparent;
-    QColor m_strokeColor = Qt::black;
-    float m_strokeWidth = 2.0f;
-    float m_opacity;
-};
-
-class Shape : public StyleObject
-{
-    Q_OBJECT
-public:
-    explicit Shape(QGraphicsItem* parent = nullptr) : StyleObject(parent), m_filled(true) {}
-protected:
-    bool m_filled;
-};
-
-class Ellipse : public Shape
-{
-    Q_OBJECT
-public:
-    Ellipse(const QRectF& rect, QGraphicsItem* parent = nullptr);
-    explicit Ellipse(QGraphicsItem* parent = nullptr);
+    explicit Figure(const QRectF& rect, FigureType type = FigureType::Ellipse, QGraphicsItem* parent = nullptr);
+    explicit Figure(QGraphicsItem* parent = nullptr);
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
     QRectF boundingRect() const override;
     QPainterPath shape() const override;
 
-    void setRect(const QRectF& rect);
-    QRectF getRect() const;
+    void setLocalRect(const QRectF& rect) override;
+    QRectF getLocalRect() const override;
 
-    // Имплементация интерфейса для эллипса
-    void setLocalRect(const QRectF& rect) override { setRect(rect); }
-    QRectF getLocalRect() const override { return getRect(); }
+    FigureState getState() const;
+    void setState(const FigureState& state);
 
 private:
-    QRectF m_rect;
+    FigureState m_state;
 };
 
 #endif // OBJECT_H

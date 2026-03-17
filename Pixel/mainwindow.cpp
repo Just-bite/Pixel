@@ -42,12 +42,6 @@ MainWindow::MainWindow(QWidget *parent)
     // ВАЖНО: Сначала устанавливаем сцену!
     m_view_main->setScene(m_scene_main);
 
-    // Теперь передаем и view, и scene в контроллер
-    m_workspace_controller = new WorkspaceController(m_view_main, m_scene_main, m_project_manager, this);
-    connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
-    connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
-
-
     // Скрываем скроллбары (сдвиг камеры будет программным)
     m_view_main->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     m_view_main->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
@@ -72,15 +66,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     QWidget *palette_pannel = new QWidget(workspace);
     QVBoxLayout *palette_pannel_layout = new QVBoxLayout(palette_pannel);
-    PalettePannel *palette = new PalettePannel(workspace);
+    PalettePannel *palette_widget = new PalettePannel(workspace);
     QSlider *slider = new QSlider(Qt::Horizontal, this);
     slider->setRange(0, 359);
     slider->setValue(0);
 
-    palette_pannel_layout->addWidget(palette);
+    palette_pannel_layout->addWidget(palette_widget);
     palette_pannel_layout->addWidget(slider);
 
-    connect(slider, &QSlider::valueChanged, palette, &PalettePannel::setHue);
+    connect(slider, &QSlider::valueChanged, palette_widget, &PalettePannel::setHue);
 
     palette_layers_pannel_layout->addWidget(palette_pannel, 5);
     palette_layers_pannel_layout->addWidget(m_layers_pannel, 5);
@@ -108,6 +102,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     setCentralWidget(container_main);
     updateInfoPanel();
+
+    // Теперь передаем и view, и scene в контроллер
+    m_workspace_controller = new WorkspaceController(m_view_main, m_scene_main, m_project_manager, m_context_pannel_layout, palette_widget, this);
+    connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
+    connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
+
 
     // Откладываем вписывание камеры до момента, когда UI полностью прорисуется (0 миллисекунд)
     QTimer::singleShot(0, this, &MainWindow::onFitToScreen);
