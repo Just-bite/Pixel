@@ -1,5 +1,6 @@
 #include "manipulator.h"
 #include "action.h"
+#include "object.h"
 #include <QPen>
 #include <QBrush>
 #include <QLineF>
@@ -12,10 +13,18 @@ TransformBox::TransformBox(QGraphicsItem *parent, QUndoStack* undoStack)
     setFlag(ItemIsSelectable, false);
 }
 
-QRectF TransformBox::targetRect() const { return parentItem() ? parentItem()->boundingRect() : QRectF(); }
-QRectF TransformBox::boundingRect() const { return targetRect().adjusted(-20, -40, 20, 20); }
+// Теперь привязываемся строго к геометрии фигуры, игнорируя толщину обводки пера!
+QRectF TransformBox::targetRect() const {
+    Object* obj = dynamic_cast<Object*>(parentItem());
+    if (obj) return obj->getLocalRect();
+    return parentItem() ? parentItem()->boundingRect() : QRectF();
+}
 
-// Честное получение масштаба матрицы (чтобы квадратики рамки не плющились при вращении)
+// ИСПРАВЛЕНИЕ: Увеличен Padding, чтобы 100% покрыть маркер вращения и не оставлять следов
+QRectF TransformBox::boundingRect() const {
+    return targetRect().adjusted(-40, -60, 40, 40);
+}
+
 void getScaleFromMatrix(const QTransform& t, qreal& sx, qreal& sy) {
     sx = qSqrt(t.m11()*t.m11() + t.m12()*t.m12());
     sy = qSqrt(t.m21()*t.m21() + t.m22()*t.m22());
@@ -58,7 +67,6 @@ void TransformBox::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
 
-    // Cosmetic Pen (Толщина 0): всегда 1 пиксель на экране, рамка больше не плющится!
     painter->setPen(QPen(Qt::blue, 0, Qt::DashLine));
     painter->setBrush(Qt::NoBrush);
     painter->drawRect(targetRect());
@@ -76,27 +84,12 @@ void TransformBox::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     painter->restore();
 }
 
-QPointF TransformBox::getFixedPoint(InteractionState state, QRectF rect) const {
-    switch(state) {
-    case ResizeTL: return rect.bottomRight();
-    case ResizeTC: return QPointF(rect.center().x(), rect.bottom());
-    case ResizeTR: return rect.bottomLeft();
-    case ResizeML: return QPointF(rect.right(), rect.center().y());
-    case ResizeMR: return QPointF(rect.left(), rect.center().y());
-    case ResizeBL: return rect.topRight();
-    case ResizeBC: return QPointF(rect.center().x(), rect.top());
-    case ResizeBR: return rect.topLeft();
-    default: return rect.center();
-    }
-}
-
 void TransformBox::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     if (!parentItem()) return;
 
     m_start_pos = parentItem()->pos();
     m_start_rotation = parentItem()->rotation();
-    m_start_transform = parentItem()->transform();
     m_start_rect = targetRect();
     m_initial_scene_transform = parentItem()->sceneTransform();
 
@@ -113,10 +106,6 @@ void TransformBox::mousePressEvent(QGraphicsSceneMouseEvent *event)
     else if (handleRect(1, 1).contains(p)) m_state = ResizeBR;
     else { m_state = None; event->ignore(); return; }
 
-    // Запоминаем закрепленную точку (противоположную потянутому углу)
-    m_fixed_local_point = getFixedPoint(m_state, m_start_rect);
-    m_fixed_scene_point = parentItem()->mapToScene(m_fixed_local_point);
-
     event->accept();
 }
 
@@ -131,44 +120,58 @@ void TransformBox::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         parentItem()->setRotation(m_start_rotation - startLine.angleTo(currentLine));
     }
     else {
-        // 1. Узнаем, где мышка относительно ИЗНАЧАЛЬНОГО (неискаженного) объекта
+        // Проецируем мышь в ИЗНАЧАЛЬНУЮ локальную систему (отсекая ошибки от уже происходящих изменений pos)
         QPointF localMouse = m_initial_scene_transform.inverted().map(event->scenePos());
 
-        qreal sx = 1.0, sy = 1.0;
-        qreal w = m_start_rect.width();
-        qreal h = m_start_rect.height();
-        if (w == 0 || h == 0) return;
+        qreal left = m_start_rect.left();
+        qreal right = m_start_rect.right();
+        qreal top = m_start_rect.top();
+        qreal bottom = m_start_rect.bottom();
 
-        // 2. Считаем масштаб только для нужных осей
-        if (m_state == ResizeTR || m_state == ResizeMR || m_state == ResizeBR) sx = (localMouse.x() - m_fixed_local_point.x()) / w;
-        if (m_state == ResizeTL || m_state == ResizeML || m_state == ResizeBL) sx = (m_fixed_local_point.x() - localMouse.x()) / w;
+        if (m_state == ResizeTL) { left = localMouse.x(); top = localMouse.y(); }
+        else if (m_state == ResizeTC) { top = localMouse.y(); }
+        else if (m_state == ResizeTR) { right = localMouse.x(); top = localMouse.y(); }
+        else if (m_state == ResizeML) { left = localMouse.x(); }
+        else if (m_state == ResizeMR) { right = localMouse.x(); }
+        else if (m_state == ResizeBL) { left = localMouse.x(); bottom = localMouse.y(); }
+        else if (m_state == ResizeBC) { bottom = localMouse.y(); }
+        else if (m_state == ResizeBR) { right = localMouse.x(); bottom = localMouse.y(); }
 
-        if (m_state == ResizeBL || m_state == ResizeBC || m_state == ResizeBR) sy = (localMouse.y() - m_fixed_local_point.y()) / h;
-        if (m_state == ResizeTL || m_state == ResizeTC || m_state == ResizeTR) sy = (m_fixed_local_point.y() - localMouse.y()) / h;
+        QRectF rawNewRect(QPointF(left, top), QPointF(right, bottom));
+        rawNewRect = rawNewRect.normalized(); // Устраняет инверсию координат
 
-        // Применяем масштаб поверх старого
-        QTransform newTransform = m_start_transform;
-        newTransform.scale(sx, sy);
-        parentItem()->setTransform(newTransform);
+        // Защита от нулевых размеров
+        if (rawNewRect.width() < 1.0) rawNewRect.setWidth(1.0);
+        if (rawNewRect.height() < 1.0) rawNewRect.setHeight(1.0);
 
-        // 3. МАГИЯ КОМПЕНСАЦИИ СДВИГА:
-        // Смотрим, куда уехала наша закрепленная точка из-за изменения масштаба...
-        QPointF current_fixed_scene = parentItem()->mapToScene(m_fixed_local_point);
-        // ...И сдвигаем весь объект обратно, чтобы точка встала на свое законное место!
-        QPointF drift = m_fixed_scene_point - current_fixed_scene;
-        parentItem()->setPos(parentItem()->pos() + drift);
+        // Магия центрирования: чтобы вращение не "съезжало", мы принудительно оставляем центр в (0,0),
+        // а разницу компенсируем сдвигом pos() в пространстве сцены!
+        QPointF center = rawNewRect.center();
+        QRectF centeredRect = rawNewRect.translated(-center);
+        QPointF newPos = m_initial_scene_transform.map(center); // Проецируем сдвиг центра с учетом изначального вращения
+
+        Object* obj = dynamic_cast<Object*>(parentItem());
+        if (obj) {
+            // ИСПРАВЛЕНИЕ GHOSTING: Явно сообщаем Qt, что МЫ (рамка) тоже сейчас изменим размер!
+            prepareGeometryChange();
+
+            obj->setLocalRect(centeredRect);
+            obj->setPos(newPos);
+        }
     }
 }
 
 void TransformBox::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
     if (m_state != None) {
-        // СОХРАНЕНИЕ ТРАНСФОРМАЦИИ В ИСТОРИЮ (Полноценная матрица!)
-        m_undo_stack->push(new TransformObjectCommand(
-            parentItem(),
-            m_start_pos, m_start_rotation, m_start_transform,
-            parentItem()->pos(), parentItem()->rotation(), parentItem()->transform()
-            ));
+        Object* obj = dynamic_cast<Object*>(parentItem());
+        if (obj) {
+            m_undo_stack->push(new TransformObjectCommand(
+                parentItem(),
+                m_start_pos, m_start_rotation, m_start_rect,
+                parentItem()->pos(), parentItem()->rotation(), obj->getLocalRect()
+                ));
+        }
         m_state = None;
     } else {
         event->ignore();

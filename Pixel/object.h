@@ -7,22 +7,24 @@
 #include <QBrush>
 #include <QStyleOptionGraphicsItem>
 
-class Object : public QGraphicsObject
+    class Object : public QGraphicsObject
 {
     Q_OBJECT
 public:
     explicit Object(QGraphicsItem* parent = nullptr) : QGraphicsObject(parent) {
-        // Включаем встроенную магию Qt: объект можно выделять и таскать мышкой!
         setFlag(QGraphicsItem::ItemIsSelectable, true);
         setFlag(QGraphicsItem::ItemIsMovable, true);
         setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     }
     virtual ~Object() = default;
 
-    // Эти методы требует QGraphicsItem
     virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override = 0;
     virtual QRectF boundingRect() const override = 0;
     virtual QPainterPath shape() const override = 0;
+
+    // НОВЫЙ ИНТЕРФЕЙС: Параметрическое изменение геометрии (Путь А)
+    virtual void setLocalRect(const QRectF& rect) = 0;
+    virtual QRectF getLocalRect() const = 0;
 };
 
 class StyleObject : public Object
@@ -69,6 +71,10 @@ public:
 
     void setRect(const QRectF& rect);
     QRectF getRect() const;
+
+    // Имплементация интерфейса для эллипса
+    void setLocalRect(const QRectF& rect) override { setRect(rect); }
+    QRectF getLocalRect() const override { return getRect(); }
 
 private:
     QRectF m_rect;

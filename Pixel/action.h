@@ -4,9 +4,9 @@
 #include <QUndoCommand>
 #include <QGraphicsScene>
 #include <QGraphicsItem>
-#include <QTransform>
+#include <QRectF>
 
-class AddObjectCommand : public QUndoCommand {
+    class AddObjectCommand : public QUndoCommand {
 public:
     AddObjectCommand(QGraphicsItem* parentLayer, QGraphicsItem* object, QUndoCommand *parent = nullptr);
     ~AddObjectCommand();
@@ -28,12 +28,12 @@ private:
     QGraphicsItem* m_object;
 };
 
-// ТРАНСФОРМАЦИЯ: Теперь хранит полноценную матрицу (QTransform) вместо одного qreal
+// ТРАНСФОРМАЦИЯ: Теперь сохраняет параметрическую геометрию (QRectF)
 class TransformObjectCommand : public QUndoCommand {
 public:
     TransformObjectCommand(QGraphicsItem* object,
-                           QPointF oldPos, qreal oldRot, QTransform oldTransform,
-                           QPointF newPos, qreal newRot, QTransform newTransform,
+                           QPointF oldPos, qreal oldRot, QRectF oldRect,
+                           QPointF newPos, qreal newRot, QRectF newRect,
                            QUndoCommand *parent = nullptr);
     void undo() override;
     void redo() override;
@@ -41,7 +41,7 @@ private:
     QGraphicsItem* m_object;
     QPointF m_old_pos, m_new_pos;
     qreal m_old_rot, m_new_rot;
-    QTransform m_old_transform, m_new_transform; // Матрицы вместо чисел!
+    QRectF m_old_rect, m_new_rect;
 };
 
 #endif // ACTION_H
