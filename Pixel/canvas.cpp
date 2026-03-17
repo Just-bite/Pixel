@@ -14,59 +14,55 @@ Canvas::Canvas(QObject* parent)
 
 void Canvas::addLayer(Layer* layer)
 {
-    if (!layer) { qDebug() << "err: adding null layer"; return; }
+    if (!layer) return;
     m_layers.push_back(layer);
 
-    // Если есть сцена, сразу добавляем слой на нее
-    if (m_parent_sceene) {
-        m_parent_sceene->addItem(layer);
-    }
+    if (m_parent_sceene) m_parent_sceene->addItem(layer);
+    if (!m_selected) selectLayer(0);
 
-    if (!m_selected) { selectLayer(0); }
+    // ФИКС БАГА СЛОЕВ: Сразу обновляем Z-индексы после добавления!
+    renderCanvas();
 }
 
 void Canvas::newLayer()
 {
     Layer* l = new Layer();
     l->setName(QString("layer%1").arg(m_layers.size() + 1));
-    addLayer(l);
+    addLayer(l); // Теперь здесь автоматически вызывается renderCanvas()
 }
 
-void Canvas::draw(QPainter* painter) const
-{
-    // БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ! Qt всё рисует сам.
-}
+void Canvas::draw(QPainter* painter) const {}
 
 std::vector<LayerInfo> Canvas::getLayersInfo() const
 {
     std::vector<LayerInfo> res;
-    for (const auto& l : m_layers) { res.push_back(l->getInfo()); }
+    for (const auto& l : m_layers) res.push_back(l->getInfo());
     return res;
 }
 
 void Canvas::deleteLayer(const int id)
 {
-    if (!ID_IN_BOUNDS(id)) { qDebug() << "err: trying to remove layer " << id; return; }
+    if (!ID_IN_BOUNDS(id)) return;
 
     Layer* layer = m_layers[id];
     if (m_parent_sceene) m_parent_sceene->removeItem(layer);
 
     delete layer;
     m_layers.erase(m_layers.begin() + id);
+    renderCanvas(); // Пересчитываем индексы
 }
 
 void Canvas::renderCanvas()
 {
     if (!m_parent_sceene) return;
 
-    // 1. Рисуем белый фон холста один раз
     if (!m_bg_item) {
         m_bg_item = m_parent_sceene->addRect(0, 0, m_canvas_size.width(), m_canvas_size.height(),
                                              QPen(Qt::NoPen), QBrush(Qt::white));
-        m_bg_item->setZValue(-1);
+        m_bg_item->setZValue(-1); // Фон всегда строго внизу
     }
 
-    // 2. Просто обновляем Z-Value у слоев! Qt сам расставит объекты по порядку
+    // Расставляем слои по порядку
     for (size_t i = 0; i < m_layers.size(); ++i) {
         m_layers[i]->setZValue(i);
     }
@@ -84,7 +80,7 @@ void Canvas::moveLayer(int id, int shift)
     m_selected_index = (m_selected_index + shift) % m_layers.size();
     m_selected = m_layers[m_selected_index];
 
-    renderCanvas(); // Обновит Z-индексы
+    renderCanvas();
 }
 
 void Canvas::selectLayer(int id)

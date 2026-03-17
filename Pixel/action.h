@@ -1,18 +1,38 @@
 #ifndef ACTION_H
 #define ACTION_H
 
-#include <stdio.h>
+#include <QUndoCommand>
+#include <QGraphicsScene>
+#include <QGraphicsItem>
 
-/*TODO command pattern lol*/
-
-class Action
+// Команда создания объекта
+class AddObjectCommand : public QUndoCommand
 {
-
 public:
-    explicit Action();
+    AddObjectCommand(QGraphicsItem* parentLayer, QGraphicsItem* object, QUndoCommand *parent = nullptr);
+    ~AddObjectCommand();
+
+    void undo() override;
+    void redo() override;
 
 private:
-    size_t m_cache;
+    QGraphicsItem* m_parent_layer;
+    QGraphicsItem* m_object;
+};
+
+// Команда удаления объекта
+class DeleteObjectCommand : public QUndoCommand
+{
+public:
+    DeleteObjectCommand(QGraphicsItem* parentLayer, QGraphicsItem* object, QUndoCommand *parent = nullptr);
+    ~DeleteObjectCommand();
+
+    void undo() override;
+    void redo() override;
+
+private:
+    QGraphicsItem* m_parent_layer;
+    QGraphicsItem* m_object;
 };
 
 #endif // ACTION_H

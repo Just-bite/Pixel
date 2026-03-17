@@ -26,6 +26,7 @@ SOURCES += \
     layerspannel.cpp \
     main.cpp \
     mainwindow.cpp \
+    manipulator.cpp \
     object.cpp \
     palettepannel.cpp \
     project.cpp \
@@ -43,6 +44,7 @@ HEADERS += \
     instrumentpannel.h \
     layerspannel.h \
     mainwindow.h \
+    manipulator.h \
     object.h \
     palettepannel.h \
     project.h \

@@ -1,22 +1,33 @@
 #include "workspacecontroller.h"
+#include "action.h"
+#include <QApplication>
 
-WorkspaceController::WorkspaceController(QGraphicsView* view, ProjectManager* projectManager, QObject *parent)
+// ИСПОЛЬЗУЕМ ПЕРЕДАННУЮ СЦЕНУ ДЛЯ ПОДКЛЮЧЕНИЯ
+WorkspaceController::WorkspaceController(QGraphicsView* view, QGraphicsScene* scene, ProjectManager* projectManager, QObject *parent)
     : QObject(parent)
     , m_view(view)
     , m_project_manager(projectManager)
 {
+    m_undo_stack = new QUndoStack(this);
+
     if (m_view) {
         m_view->installEventFilter(this);
         m_view->viewport()->installEventFilter(this);
     }
+
+    // ТЕПЕРЬ ПОДКЛЮЧЕНИЕ ГАРАНТИРОВАННО СРАБОТАЕТ
+    if (scene) {
+        connect(scene, &QGraphicsScene::selectionChanged, this, &WorkspaceController::onSelectionChanged);
+    }
 }
+
+// ... остальной код файла без изменений ...
 
 void WorkspaceController::setCurrentTool(InstrumentType type)
 {
     m_current_tool = type;
     qDebug() << "[Controller] Active tool changed to:" << static_cast<int>(type);
 
-    // Сбрасываем курсор при смене инструмента
     if (m_current_tool == InstrumentType::HAND) m_view->setCursor(Qt::OpenHandCursor);
     else if (m_current_tool == InstrumentType::FIGURE) m_view->setCursor(Qt::CrossCursor);
     else m_view->setCursor(Qt::ArrowCursor);
@@ -28,18 +39,29 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
 
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+
+        if (keyEvent->modifiers() & Qt::ControlModifier) {
+            if (keyEvent->key() == Qt::Key_Z) {
+                m_undo_stack->undo();
+                return true;
+            }
+            if (keyEvent->key() == Qt::Key_Y) {
+                m_undo_stack->redo();
+                return true;
+            }
+        }
+
+        if (keyEvent->key() == Qt::Key_Delete) {
+            if (m_view->scene()->selectedItems().isEmpty()) return false;
+
+            QGraphicsItem* selected = m_view->scene()->selectedItems().first();
+            m_undo_stack->push(new DeleteObjectCommand(selected->parentItem(), selected));
+            return true;
+        }
+
         if (keyEvent->key() == Qt::Key_Space && !keyEvent->isAutoRepeat()) {
             m_space_pressed = true;
             if (!m_is_panning) m_view->setCursor(Qt::OpenHandCursor);
-            return true;
-        }
-    } else if (event->type() == QEvent::KeyRelease) {
-        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-        if (keyEvent->key() == Qt::Key_Space && !keyEvent->isAutoRepeat()) {
-            m_space_pressed = false;
-            m_is_panning = false;
-            // Возвращаем курсор текущего инструмента
-            setCurrentTool(m_current_tool);
             return true;
         }
     }
@@ -58,7 +80,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
         if (event->type() == QEvent::MouseButtonPress) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
 
-            // Если нажат пробел, колесико ИЛИ выбран инструмент HAND -> Панорамируем
             if ((mouseEvent->button() == Qt::LeftButton && (m_space_pressed || m_current_tool == InstrumentType::HAND)) || mouseEvent->button() == Qt::MiddleButton) {
                 m_is_panning = true;
                 m_last_pan_pos = mouseEvent->pos();
@@ -66,32 +87,21 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
                 return true;
             }
 
-            // Инструмент: Фигура
             if (mouseEvent->button() == Qt::LeftButton && m_current_tool == InstrumentType::FIGURE) {
                 m_is_drawing = true;
                 m_draw_start_pos = m_view->mapToScene(mouseEvent->pos());
 
                 Canvas *canvas = m_project_manager->GetCurrentCanvas();
                 if (canvas && canvas->getSelectedLayerid() >= 0) {
-
-                    // Сбрасываем выделение с других объектов, чтобы рамка была только у нового!
                     m_view->scene()->clearSelection();
 
                     m_temp_ellipse = new Ellipse(QRectF(m_draw_start_pos, QSizeF(0, 0)));
                     canvas->addObjectToSelectedLayer(m_temp_ellipse);
-
-                    // ДЕЛАЕМ ОБЪЕКТ ВЫДЕЛЕННЫМ (появится синяя рамка)
-                    m_temp_ellipse->setSelected(true);
                 }
                 return true;
             }
 
-
-            // Инструмент: Указатель (POINTER)
             if (m_current_tool == InstrumentType::POINTER) {
-                // Мы НИЧЕГО не делаем и возвращаем false!
-                // Это позволит движку Qt самому понять, что юзер кликнул по фигуре,
-                // выделить её и начать перетаскивание.
                 return false;
             }
         }
@@ -109,8 +119,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
 
             if (m_is_drawing && m_temp_ellipse && m_current_tool == InstrumentType::FIGURE) {
                 QPointF currentPos = m_view->mapToScene(mouseEvent->pos());
-
-                // normalized() гарантирует правильный прямоугольник, даже если мы тянем мышь вверх-влево
                 QRectF newRect = QRectF(m_draw_start_pos, currentPos).normalized();
                 m_temp_ellipse->setRect(newRect);
                 return true;
@@ -124,12 +132,19 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
 
             if (m_is_panning) {
                 m_is_panning = false;
-                setCurrentTool(m_current_tool); // Возвращаем курсор
+                setCurrentTool(m_current_tool);
                 return true;
             }
 
             if (m_is_drawing && mouseEvent->button() == Qt::LeftButton && m_current_tool == InstrumentType::FIGURE) {
                 m_is_drawing = false;
+
+                if (m_temp_ellipse) {
+                    m_temp_ellipse->setRect(m_temp_ellipse->getRect().normalized());
+                    m_undo_stack->push(new AddObjectCommand(m_temp_ellipse->parentItem(), m_temp_ellipse));
+
+                    m_temp_ellipse->setSelected(true);
+                }
                 m_temp_ellipse = nullptr;
                 return true;
             }
@@ -139,4 +154,28 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event)
     }
 
     return QObject::eventFilter(obj, event);
+}
+
+void WorkspaceController::onSelectionChanged()
+{
+    // Безопасное удаление старой рамки
+    if (m_transform_box) {
+        m_transform_box->setParentItem(nullptr);
+        delete m_transform_box;
+        m_transform_box = nullptr;
+    }
+
+    QList<QGraphicsItem*> selected = m_view->scene()->selectedItems();
+
+    if (selected.size() == 1) {
+        QGraphicsItem* item = selected.first();
+
+        // Так как фон и слои не выделяемы, это 100% объект Фигуры.
+        // Просто создаем рамку и привязываем к нему!
+        m_transform_box = new TransformBox(item);
+
+        qDebug() << "[Controller] TransformBox CREATED successfully for item!";
+    } else {
+        qDebug() << "[Controller] Selection cleared or multiple items selected.";
+    }
 }

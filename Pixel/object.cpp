@@ -23,12 +23,6 @@ void Ellipse::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, Q
 
     // Рисуем эллипс, вписанный в прямоугольник!
     painter->drawEllipse(m_rect);
-
-    if (option->state & QStyle::State_Selected) {
-        painter->setPen(QPen(Qt::blue, 1, Qt::DashLine));
-        painter->setBrush(Qt::NoBrush);
-        painter->drawRect(boundingRect());
-    }
     painter->restore();
 }
 

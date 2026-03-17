@@ -3,25 +3,30 @@
 
 #include <QObject>
 #include <QGraphicsView>
+#include <QGraphicsScene> // Добавили
 #include <QEvent>
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QWheelEvent>
 #include <QScrollBar>
 #include <QDebug>
+#include <QUndoStack>
 
 #include "projectmanager.h"
 #include "object.h"
-#include "instrumentpannel.h" // Для InstrumentType
+#include "instrumentpannel.h"
+#include "manipulator.h"
 
 class WorkspaceController : public QObject
 {
     Q_OBJECT
 public:
-    explicit WorkspaceController(QGraphicsView* view, ProjectManager* projectManager, QObject *parent = nullptr);
+    // ТЕПЕРЬ МЫ ЯВНО ПЕРЕДАЕМ СЦЕНУ
+    explicit WorkspaceController(QGraphicsView* view, QGraphicsScene* scene, ProjectManager* projectManager, QObject *parent = nullptr);
 
 public slots:
-    void setCurrentTool(InstrumentType type); // Слот для смены инструмента
+    void setCurrentTool(InstrumentType type);
+    void onSelectionChanged();
 
 signals:
     void viewportChanged();
@@ -32,8 +37,10 @@ protected:
 private:
     QGraphicsView* m_view;
     ProjectManager* m_project_manager;
+    TransformBox* m_transform_box = nullptr;
+    QUndoStack* m_undo_stack;
 
-    InstrumentType m_current_tool = InstrumentType::POINTER; // По умолчанию Указатель
+    InstrumentType m_current_tool = InstrumentType::POINTER;
 
     bool m_space_pressed = false;
     bool m_is_panning = false;

@@ -39,13 +39,14 @@ MainWindow::MainWindow(QWidget *parent)
     Canvas *canvas = m_project_manager->GetCurrentCanvas();
     canvas->setScene(m_scene_main);
 
-    // Слушаем события View и его Viewport
-    m_workspace_controller = new WorkspaceController(m_view_main, m_project_manager, this);
+    // ВАЖНО: Сначала устанавливаем сцену!
+    m_view_main->setScene(m_scene_main);
+
+    // Теперь передаем и view, и scene в контроллер
+    m_workspace_controller = new WorkspaceController(m_view_main, m_scene_main, m_project_manager, this);
     connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
     connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
 
-    m_view_main->viewport()->installEventFilter(this);
-    m_view_main->setScene(m_scene_main);
 
     // Скрываем скроллбары (сдвиг камеры будет программным)
     m_view_main->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
