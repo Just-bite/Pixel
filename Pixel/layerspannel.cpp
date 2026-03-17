@@ -22,7 +22,14 @@ LayerWidget::LayerWidget(QWidget* parent) : QWidget(parent) {
         b->setFixedSize(BTN_SIZE, BTN_SIZE);
     }
 
-    m_layer_name = new QLabel("");
+    m_layer_name = new QLineEdit();
+    m_layer_name->setStyleSheet("background: transparent; border: none; color: #e0e0e0;");
+    connect(m_layer_name, &QLineEdit::editingFinished, this, [this](){
+        emit nameChanged(m_layer_name->text());
+        m_layer_name->clearFocus();
+    });
+
+
     m_layout->addWidget(m_lock_btn);
     m_layout->addWidget(m_eye_btn);
     m_layout->addWidget(m_layer_name);
@@ -36,6 +43,11 @@ LayerWidget::LayerWidget(QWidget* parent) : QWidget(parent) {
     connect(m_down_btn, &QPushButton::clicked, this, &LayerWidget::downClicked);
     connect(m_eye_btn, &QPushButton::toggled, this, &LayerWidget::onVisibleToggled);
     connect(m_lock_btn, &QPushButton::toggled, this, &LayerWidget::onLockedToggled);
+}
+
+void LayerWidget::setName(const QString& name) {
+    m_layer_name->setText(name);
+    m_layer_name->setCursorPosition(0); // Чтобы длинное имя не скроллилось в конец
 }
 
 void LayerWidget::paintEvent(QPaintEvent *) {
@@ -106,6 +118,7 @@ void LayersPannel::updateLayers() {
         connect(lw, &LayerWidget::layerClicked, this, &LayersPannel::onLayerClicked);
         connect(lw, &LayerWidget::visibleToggled, this, &LayersPannel::onLayerVisibleToggled);
         connect(lw, &LayerWidget::lockedToggled, this, &LayersPannel::onLayerLockedToggled);
+        connect(lw, &LayerWidget::nameChanged, this, &LayersPannel::onLayerNameChanged);
 
         m_layers.push_back(lw);
         m_layers_layout->addWidget(lw);
@@ -159,4 +172,11 @@ void LayersPannel::onLayerVisibleToggled(bool visible) {
 void LayersPannel::onLayerLockedToggled(bool locked) {
     LayerWidget* sender_layer = qobject_cast<LayerWidget*>(sender());
     if (sender_layer) m_canvas_ptr->setLayerLocked(sender_layer->getIndex(), locked);
+}
+
+void LayersPannel::onLayerNameChanged(const QString& newName) {
+    LayerWidget* sender_layer = qobject_cast<LayerWidget*>(sender());
+    if (sender_layer && m_canvas_ptr) {
+        m_canvas_ptr->renameLayer(sender_layer->getIndex(), newName);
+    }
 }

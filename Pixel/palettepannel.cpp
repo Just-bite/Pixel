@@ -136,17 +136,27 @@ void PalettePannel::onAreaCommit(const QColor& c) {
     QColor fullColor = c; fullColor.setAlpha(m_alpha_slider->value());
     m_current_color = fullColor; emit colorCommitted(fullColor);
 }
+
 void PalettePannel::onSlidersChanged() {
     if (!m_syncing) {
+        m_syncing = true; // Блокируем обратный пересчет X/Y кружка!
+
         m_area->setHue(m_hue_slider->value());
-        // Синхронизируем кружок с ползунком HUE
         QColor cur = m_area->currentColor();
         cur.setAlpha(m_alpha_slider->value());
         m_current_color = cur;
-        updateUIFromColor(cur);
+
+        // Обновляем только текст HEX, НЕ трогая позицию кружка (m_area->setCursorColor)
+        QString hex = QString("#%1%2%3%4")
+                          .arg(cur.red(), 2, 16, QChar('0')).arg(cur.green(), 2, 16, QChar('0'))
+                          .arg(cur.blue(), 2, 16, QChar('0')).arg(cur.alpha(), 2, 16, QChar('0')).toUpper();
+        m_hex_edit->setText(hex);
+
+        m_syncing = false;
         emit colorPreviewed(cur);
     }
 }
+
 void PalettePannel::onSliderReleased() { if (!m_syncing) emit colorCommitted(m_current_color); }
 void PalettePannel::onHexChanged() {
     if (m_syncing) return;

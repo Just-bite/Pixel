@@ -1,7 +1,7 @@
 #include "canvas.h"
 #define ID_IN_BOUNDS(id) (id >= 0 && id < (int)m_layers.size())
 
-Canvas::Canvas(QObject* parent) : QObject(parent), m_parent_sceene(nullptr), m_selected(nullptr), m_canvas_size(800, 600), m_bg_item(nullptr), m_selected_index(-1) {}
+Canvas::Canvas(QObject* parent) : QObject(parent), m_parent_sceene(nullptr), m_selected(nullptr), m_selected_index(-1), m_canvas_size(800, 600), m_bg_item(nullptr), m_layer_counter(0) {}
 
 void Canvas::addLayer(Layer* layer) {
     if (!layer) return;
@@ -12,8 +12,9 @@ void Canvas::addLayer(Layer* layer) {
 }
 
 void Canvas::newLayer() {
+    m_layer_counter++; // Счетчик всегда растет, даже если удаляли слои
     Layer* l = new Layer();
-    l->setName(QString("layer%1").arg(m_layers.size() + 1));
+    l->setName(QString("layer%1").arg(m_layer_counter));
     addLayer(l);
 }
 
@@ -88,4 +89,8 @@ void Canvas::moveObjectToLayer(Object* obj, int new_layer_id) {
         m_layers[old_id]->removeObject(obj);
         m_layers[new_layer_id]->addObject(obj);
     }
+}
+
+void Canvas::renameLayer(int id, const QString& new_name) {
+    if (ID_IN_BOUNDS(id)) m_layers[id]->setName(new_name);
 }

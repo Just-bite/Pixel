@@ -9,13 +9,14 @@
 #include <QScrollArea>
 #include <vector>
 #include "canvas.h"
+#include <QLineEdit>
 
 class LayerWidget : public QWidget {
     Q_OBJECT
 public:
     explicit LayerWidget(QWidget* parent = nullptr);
 
-    void setName(const QString& name) { m_layer_name->setText(name); }
+    void setName(const QString& name);
     void setIndex(int id) { m_index = id; }
     int getIndex() const { return m_index; }
 
@@ -32,6 +33,7 @@ signals:
     void layerClicked();
     void visibleToggled(bool visible);
     void lockedToggled(bool locked);
+    void nameChanged(const QString& newName);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -45,7 +47,7 @@ private:
     static constexpr int BTN_SIZE = 30;
     QHBoxLayout* m_layout;
     QPushButton *m_lock_btn, *m_eye_btn, *m_up_btn, *m_down_btn, *m_delete_btn;
-    QLabel* m_layer_name;
+    QLineEdit* m_layer_name;
     int m_index = 0;
     bool m_is_selected = false;
 };
@@ -75,6 +77,7 @@ private slots:
     void onLayerClicked();
     void onLayerVisibleToggled(bool visible);
     void onLayerLockedToggled(bool locked);
+    void onLayerNameChanged(const QString& newName);
 };
 
 #endif // LAYERSPANNEL_H

@@ -35,7 +35,7 @@ public:
 
     std::vector<LayerInfo> getLayersInfo() const;
     QSize getSize() const { return m_canvas_size; }
-
+    void renameLayer(int id, const QString& new_name);
 private:
     std::vector<Layer*> m_layers;
     QGraphicsScene* m_parent_sceene;
@@ -43,6 +43,7 @@ private:
     int m_selected_index;
     QSize m_canvas_size;
     QGraphicsRectItem* m_bg_item;
+    int m_layer_counter = 0;
 };
 
 #endif // CANVAS_H
