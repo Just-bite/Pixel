@@ -26,11 +26,13 @@ SOURCES += \
     layerspannel.cpp \
     main.cpp \
     mainwindow.cpp \
+    manipulator.cpp \
     object.cpp \
     palettepannel.cpp \
     project.cpp \
     projectmanager.cpp \
-    tool.cpp
+    tool.cpp \
+    workspacecontroller.cpp
 
 HEADERS += \
     action.h \
@@ -42,11 +44,13 @@ HEADERS += \
     instrumentpannel.h \
     layerspannel.h \
     mainwindow.h \
+    manipulator.h \
     object.h \
     palettepannel.h \
     project.h \
     projectmanager.h \
-    tool.h
+    tool.h \
+    workspacecontroller.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

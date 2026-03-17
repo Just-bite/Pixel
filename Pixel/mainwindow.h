@@ -26,6 +26,7 @@
 #include "layer.h"
 #include "object.h"
 #include "projectmanager.h"
+#include "workspacecontroller.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -40,7 +41,6 @@ public:
     ~MainWindow();
 
 protected:
-    bool eventFilter(QObject *obj, QEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 
 private:
@@ -58,6 +58,7 @@ private:
     PalettePannel *m_palette_pannel_layout;
 
     ProjectManager *m_project_manager;
+    WorkspaceController *m_workspace_controller;
 
     // Переменные состояния для панорамирования и инструментов
     bool m_space_pressed = false;

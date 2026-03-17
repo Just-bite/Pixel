@@ -33,10 +33,20 @@ MainWindow::MainWindow(QWidget *parent)
     // Устанавливаем отслеживание мыши
     m_view_main->viewport()->setMouseTracking(true);
 
-    // Слушаем события View и его Viewport
-    m_view_main->installEventFilter(this);
-    m_view_main->viewport()->installEventFilter(this);
+    //создание PM
+    m_project_manager = new ProjectManager();
+    m_project_manager->createProject();
+    Canvas *canvas = m_project_manager->GetCurrentCanvas();
+    canvas->setScene(m_scene_main);
+
+    // ВАЖНО: Сначала устанавливаем сцену!
     m_view_main->setScene(m_scene_main);
+
+    // Теперь передаем и view, и scene в контроллер
+    m_workspace_controller = new WorkspaceController(m_view_main, m_scene_main, m_project_manager, this);
+    connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
+    connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
+
 
     // Скрываем скроллбары (сдвиг камеры будет программным)
     m_view_main->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
@@ -48,18 +58,10 @@ MainWindow::MainWindow(QWidget *parent)
     palette_layers_pannel->setStyleSheet("border: 1px solid #555555; ");
     palette_layers_pannel->setMaximumWidth(400);
 
-    m_project_manager = new ProjectManager();
-    m_project_manager->createProject();
-    Canvas *canvas = m_project_manager->GetCurrentCanvas();
-    canvas->setScene(m_scene_main);
 
-    Layer *layer1 = new Layer("layer1", canvas);
-    Layer *layer2 = new Layer("layer2", canvas);
-    Ellipse *e1 = new Ellipse(QPointF(300, 300), 30, layer1);
-    Ellipse *e2 = new Ellipse(QPointF(260, 300), 60, layer2);
 
-    layer1->addObject(e1);
-    layer2->addObject(e2);
+    Layer *layer1 = new Layer("layer1");
+    Layer *layer2 = new Layer("layer2");
 
     canvas->addLayer(layer1);
     canvas->addLayer(layer2);
@@ -146,154 +148,6 @@ void MainWindow::createMenuBar()
 
     QMenu *view_menu = menu_bar->addMenu("&View");
     QMenu *help_menu = menu_bar->addMenu("&Help");
-}
-
-bool MainWindow::eventFilter(QObject *obj, QEvent *event)
-{
-    if (event->type() == QEvent::KeyPress) {
-        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-        if (keyEvent->key() == Qt::Key_Space && !keyEvent->isAutoRepeat()) {
-            m_space_pressed = true;
-            if (!m_is_panning) m_view_main->setCursor(Qt::OpenHandCursor);
-            return true;
-        }
-    } else if (event->type() == QEvent::KeyRelease) {
-        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-        if (keyEvent->key() == Qt::Key_Space && !keyEvent->isAutoRepeat()) {
-            m_space_pressed = false;
-            m_is_panning = false;
-            m_view_main->setCursor(Qt::ArrowCursor);
-            return true;
-        }
-    }
-
-    if (obj == m_view_main->viewport() || obj == m_view_main) {
-        if (event->type() == QEvent::Wheel) {
-            QWheelEvent *wheelEvent = static_cast<QWheelEvent *>(event);
-            m_view_main->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-            int delta = wheelEvent->angleDelta().y();
-            double factor = (delta > 0) ? 1.15 : (1.0 / 1.15);
-            m_view_main->scale(factor, factor);
-            updateInfoPanel();
-            return true;
-        }
-
-        // НАЖАТИЕ МЫШИ
-        if (event->type() == QEvent::MouseButtonPress) {
-            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-
-            if ((mouseEvent->button() == Qt::LeftButton && m_space_pressed) || mouseEvent->button() == Qt::MiddleButton) {
-                m_is_panning = true;
-                m_last_pan_pos = mouseEvent->pos();
-                m_view_main->setCursor(Qt::ClosedHandCursor);
-                return true;
-            }
-
-            if (mouseEvent->button() == Qt::LeftButton) {
-                m_is_drawing = true;
-                QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
-                m_draw_start_pos = internalPos;
-
-                Canvas *canvas = m_project_manager->GetCurrentCanvas();
-
-                // ТЕСТ: Создаем эллипс с нулевым радиусом в точке клика
-                m_temp_ellipse = new Ellipse(internalPos, 0);
-                // Зададим ему цвет, чтобы было видно
-                // m_temp_ellipse->setFillColor(Qt::blue); // Раскомментируй, если у тебя реализован setFillColor
-
-                canvas->addObjectToSelectedLayer(m_temp_ellipse);
-                canvas->renderCanvas();
-            }
-        }
-
-        // ДВИЖЕНИЕ МЫШИ
-        if (event->type() == QEvent::MouseMove) {
-            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-
-            if (m_is_panning) {
-                QPoint delta = mouseEvent->pos() - m_last_pan_pos;
-                m_view_main->horizontalScrollBar()->setValue(m_view_main->horizontalScrollBar()->value() - delta.x());
-                m_view_main->verticalScrollBar()->setValue(m_view_main->verticalScrollBar()->value() - delta.y());
-                m_last_pan_pos = mouseEvent->pos();
-                return true;
-            }
-
-            if (m_is_drawing && m_temp_ellipse) {
-                QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
-                Canvas *canvas = m_project_manager->GetCurrentCanvas();
-
-                // Вычисляем новый центр и радиус на основе движения мыши
-                QPointF center = (m_draw_start_pos + internalPos) / 2.0;
-
-                // Считаем дистанцию (простой вариант для круга)
-                qreal radius = qAbs(internalPos.x() - m_draw_start_pos.x()) / 2.0;
-
-                m_temp_ellipse->setCenter(center);
-                m_temp_ellipse->setRadius(radius);
-
-                // Перерисовываем холст, чтобы увидеть изменения в реальном времени
-                canvas->renderCanvas();
-            }
-        }
-
-        // ОТПУСКАНИЕ МЫШИ
-        if (event->type() == QEvent::MouseButtonRelease) {
-            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-
-            if (m_is_panning) {
-                m_is_panning = false;
-                m_view_main->setCursor(m_space_pressed ? Qt::OpenHandCursor : Qt::ArrowCursor);
-                return true;
-            }
-
-            if (m_is_drawing && mouseEvent->button() == Qt::LeftButton) {
-                m_is_drawing = false;
-
-                // Фиксируем фигуру. Теперь она остается на слое.
-                // В будущем здесь будет генерация команды для QUndoStack.
-                m_temp_ellipse = nullptr;
-
-                qDebug() << "[TOOL] Figure finalized.";
-            }
-        }
-
-        if (event->type() == QEvent::MouseMove) {
-            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-            if (m_is_panning) {
-                QPoint delta = mouseEvent->pos() - m_last_pan_pos;
-                m_view_main->horizontalScrollBar()->setValue(m_view_main->horizontalScrollBar()->value() - delta.x());
-                m_view_main->verticalScrollBar()->setValue(m_view_main->verticalScrollBar()->value() - delta.y());
-                m_last_pan_pos = mouseEvent->pos();
-                return true;
-            }
-
-            if (m_is_drawing) {
-                QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
-                if (!m_view_main->viewport()->rect().contains(mouseEvent->pos())) {
-                    qDebug() << "[TOOL] Mouse went outside UI! Drag cancelled/clamped.";
-                } else {
-                    // qDebug() << "[TOOL] Mouse MOVE at Canvas:" << internalPos;
-                }
-            }
-        }
-
-        if (event->type() == QEvent::MouseButtonRelease) {
-            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-            if (m_is_panning) {
-                m_is_panning = false;
-                m_view_main->setCursor(m_space_pressed ? Qt::OpenHandCursor : Qt::ArrowCursor);
-                return true;
-            }
-
-            if (m_is_drawing && mouseEvent->button() == Qt::LeftButton) {
-                m_is_drawing = false;
-                QPointF internalPos = m_view_main->mapToScene(mouseEvent->pos());
-                qDebug() << "[TOOL] Mouse RELEASE at Canvas:" << internalPos;
-            }
-        }
-    }
-
-    return QMainWindow::eventFilter(obj, event);
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)

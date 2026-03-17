@@ -1,45 +1,50 @@
 #include "object.h"
 
-void Object::setPosition(const QPointF& pos)
+Ellipse::Ellipse(const QRectF& rect, QGraphicsItem* parent)
+    : Shape(parent), m_rect(rect)
 {
-    m_position = pos;
-}
-QPointF Object::position() const { return m_position; }
-
-Ellipse::Ellipse(const QPointF& center, qreal radius, QObject* parent)
-    : Shape(parent), m_center(center), m_radius(radius)
-{
+    setFillColor(Qt::red);
 }
 
-void Ellipse::draw(QPainter* painter) const
+Ellipse::Ellipse(QGraphicsItem* parent)
+    : Shape(parent), m_rect(0,0,0,0)
+{
+    setFillColor(Qt::red);
+}
+
+void Ellipse::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
 
-    painter->setPen(QPen(Qt::black, 2));
-    painter->setBrush(QBrush(Qt::red));
+    painter->setPen(QPen(m_strokeColor, m_strokeWidth));
+    if (m_filled) painter->setBrush(QBrush(m_fillColor));
+    else painter->setBrush(Qt::NoBrush);
 
-    painter->drawEllipse(m_center, m_radius, m_radius);
-
+    // Рисуем эллипс, вписанный в прямоугольник!
+    painter->drawEllipse(m_rect);
     painter->restore();
 }
 
-bool Ellipse::contains(const QPointF& point) const { return false; /* TODO */ }
-
-QRectF Ellipse::boundingRect() const { return QRectF(); /* TODO */ }
-
-// Добавь эти методы в конец object.cpp
-void Ellipse::setCenter(const QPointF& center) {
-    m_center = center;
+QRectF Ellipse::boundingRect() const
+{
+    qreal pen_offset = m_strokeWidth / 2.0;
+    // Границы - это наш прямоугольник + толщина линии
+    return m_rect.adjusted(-pen_offset, -pen_offset, pen_offset, pen_offset);
 }
 
-QPointF Ellipse::getCenter() const {
-    return m_center;
+QPainterPath Ellipse::shape() const
+{
+    QPainterPath path;
+    path.addEllipse(m_rect);
+    return path;
 }
 
-void Ellipse::setRadius(qreal radius) {
-    m_radius = radius;
+void Ellipse::setRect(const QRectF& rect)
+{
+    prepareGeometryChange();
+    m_rect = rect;
+    update();
 }
 
-qreal Ellipse::getRadius() const {
-    return m_radius;
-}
+QRectF Ellipse::getRect() const { return m_rect; }
