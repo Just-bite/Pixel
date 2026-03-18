@@ -9,7 +9,7 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
 
     m_lbl_placeholder = new QLabel("Tool selected.", this);
     m_lbl_placeholder->setAlignment(Qt::AlignCenter);
-    // Убедимся, что у лейбла нет рамок от глобальных стилей
+
     m_lbl_placeholder->setStyleSheet("border: none; background: transparent; font-size: 14px; color: #aaaaaa;");
 
     m_geometry_group = new QGroupBox("Transform", this);
@@ -18,8 +18,10 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_x_box = createSpinBox(-10000, 10000); m_y_box = createSpinBox(-10000, 10000);
     m_w_box = createSpinBox(1, 10000); m_h_box = createSpinBox(1, 10000);
     m_rot_box = createSpinBox(-360, 360);
-    addLabeledWidget(geom_layout, "X:", m_x_box); addLabeledWidget(geom_layout, "Y:", m_y_box);
-    addLabeledWidget(geom_layout, "W:", m_w_box); addLabeledWidget(geom_layout, "H:", m_h_box);
+    addLabeledWidget(geom_layout, "X:", m_x_box);
+    addLabeledWidget(geom_layout, "Y:", m_y_box);
+    addLabeledWidget(geom_layout, "W:", m_w_box);
+    addLabeledWidget(geom_layout, "H:", m_h_box);
     addLabeledWidget(geom_layout, "Rot:", m_rot_box);
 
     m_style_group = new QGroupBox("Style", this);
@@ -29,19 +31,26 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_type_box->addItem("Ellipse", static_cast<int>(FigureType::Ellipse));
     m_type_box->addItem("Rectangle", static_cast<int>(FigureType::Rectangle));
     m_thick_box = createSpinBox(0, 100);
-    m_btn_fill_color = new QPushButton(this); m_btn_fill_color->setFixedSize(24, 24);
-    m_btn_stroke_color = new QPushButton(this); m_btn_stroke_color->setFixedSize(24, 24);
-    addLabeledWidget(style_layout, "Type:", m_type_box); addLabeledWidget(style_layout, "Thick:", m_thick_box);
-    style_layout->addSpacing(10); addLabeledWidget(style_layout, "Fill:", m_btn_fill_color);
-    style_layout->addSpacing(5); addLabeledWidget(style_layout, "Outline:", m_btn_stroke_color);
+    m_btn_fill_color = new QPushButton(this);
+    m_btn_fill_color->setFixedSize(24, 24);
+    m_btn_stroke_color = new QPushButton(this);
+    m_btn_stroke_color->setFixedSize(24, 24);
+    addLabeledWidget(style_layout, "Type:", m_type_box);
+    addLabeledWidget(style_layout, "Thick:", m_thick_box);
+    style_layout->addSpacing(10);
+    addLabeledWidget(style_layout, "Fill:", m_btn_fill_color);
+    style_layout->addSpacing(5);
+    addLabeledWidget(style_layout, "Outline:", m_btn_stroke_color);
 
-    // Убираем QGroupBox (рамку), делаем просто QWidget
     m_layer_group = new QWidget(this);
     QHBoxLayout* layer_layout = new QHBoxLayout(m_layer_group);
-    layer_layout->setContentsMargins(5, 10, 5, 5); // Сдвигаем чуть вниз для выравнивания
-    m_btn_layer_down = new QPushButton("Dn", this); m_btn_layer_down->setFixedSize(45, 26);
-    m_btn_layer_up = new QPushButton("Up", this); m_btn_layer_up->setFixedSize(45, 26);
-    layer_layout->addWidget(m_btn_layer_down); layer_layout->addWidget(m_btn_layer_up);
+    layer_layout->setContentsMargins(5, 10, 5, 5);
+    m_btn_layer_down = new QPushButton("Dn", this);
+    m_btn_layer_down->setFixedSize(45, 26);
+    m_btn_layer_up = new QPushButton("Up", this);
+    m_btn_layer_up->setFixedSize(45, 26);
+    layer_layout->addWidget(m_btn_layer_down);
+    layer_layout->addWidget(m_btn_layer_up);
 
     main_layout->addWidget(m_lbl_placeholder);
     main_layout->addWidget(m_geometry_group);
@@ -53,7 +62,7 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_default_state.stroke = Qt::black;
     m_default_state.thickness = 2.0f;
     m_default_state.type = FigureType::Ellipse;
-    // ДОБАВИТЬ ЭТО, чтобы избежать NaN:
+
     m_default_state.pos = QPointF(0, 0);
     m_default_state.rot = 0.0;
     m_default_state.rect = QRectF(0, 0, 0, 0);
@@ -111,9 +120,12 @@ void ContextPannel::setTarget(Figure* figure) {
     blockSignals(true);
     FigureState s = figure->getState();
     m_type_box->setCurrentIndex(m_type_box->findData(static_cast<int>(s.type)));
-    m_x_box->setValue(s.pos.x()); m_y_box->setValue(s.pos.y());
-    m_w_box->setValue(s.rect.width()); m_h_box->setValue(s.rect.height());
-    m_rot_box->setValue(s.rot); m_thick_box->setValue(s.thickness);
+    m_x_box->setValue(s.pos.x());
+    m_y_box->setValue(s.pos.y());
+    m_w_box->setValue(s.rect.width());
+    m_h_box->setValue(s.rect.height());
+    m_rot_box->setValue(s.rot);
+    m_thick_box->setValue(s.thickness);
     updateColorButtonsUI();
     blockSignals(false);
 }
@@ -127,7 +139,10 @@ FigureState ContextPannel::getUIState(const FigureState& baseState) const {
 }
 
 void ContextPannel::setDefaultColor(bool isFill, const QColor& color) {
-    if (isFill) m_default_state.fill = color; else m_default_state.stroke = color;
+    if (isFill)
+        m_default_state.fill = color;
+    else
+        m_default_state.stroke = color;
     updateColorButtonsUI();
 }
 
@@ -150,11 +165,27 @@ void ContextPannel::updateColorButtonsUI() {
     m_btn_stroke_color->setStyleSheet(QString("background-color: %1; %2").arg(s.stroke.name(QColor::HexArgb)).arg(strokeBorder));
 }
 
-void ContextPannel::onColorFillClicked() { m_active_is_fill = true; updateColorButtonsUI(); emit colorTargetActivated(true); }
-void ContextPannel::onColorStrokeClicked() { m_active_is_fill = false; updateColorButtonsUI(); emit colorTargetActivated(false); }
-void ContextPannel::onMoveUpClicked() { emit moveObjectLayerRequested(1); }
-void ContextPannel::onMoveDownClicked() { emit moveObjectLayerRequested(-1); }
+void ContextPannel::onColorFillClicked() {
+    m_active_is_fill = true;
+    updateColorButtonsUI();
+    emit colorTargetActivated(true);
+}
+void ContextPannel::onColorStrokeClicked() {
+    m_active_is_fill = false;
+    updateColorButtonsUI();
+    emit colorTargetActivated(false);
+}
+void ContextPannel::onMoveUpClicked() {
+    emit moveObjectLayerRequested(1);
+}
+void ContextPannel::onMoveDownClicked() {
+    emit moveObjectLayerRequested(-1);
+}
 void ContextPannel::onAnyUIChanged() {
-    if (m_current_target) emit propertyChanged();
-    else { m_default_state.type = static_cast<FigureType>(m_type_box->currentData().toInt()); m_default_state.thickness = m_thick_box->value(); }
+    if (m_current_target)
+        emit propertyChanged();
+    else {
+        m_default_state.type = static_cast<FigureType>(m_type_box->currentData().toInt());
+        m_default_state.thickness = m_thick_box->value();
+    }
 }

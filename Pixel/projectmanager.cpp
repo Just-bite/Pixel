@@ -54,14 +54,12 @@ bool ProjectManager::exportPng() {
     if (fileName.isEmpty()) return false;
     if (!fileName.endsWith(".png")) fileName += ".png";
 
-    // Создаем прозрачное изображение размером с холст
     QImage image(canvas->getSize(), QImage::Format_ARGB32);
     image.fill(Qt::transparent);
 
     QPainter painter(&image);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Рендерим сцену
     canvas->getScene()->render(&painter, QRectF(), QRectF(0, 0, canvas->getSize().width(), canvas->getSize().height()));
 
     return image.save(fileName);
@@ -118,14 +116,14 @@ void ProjectManager::loadFromJson(const QString& path) {
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     if (!doc.isObject()) return;
 
-    canvas->clearCanvas(); // Очищаем старый холст
+    canvas->clearCanvas();
 
     QJsonArray layersArr = doc.object()["layers"].toArray();
     for (int i = 0; i < layersArr.size(); ++i) {
         QJsonObject lObj = layersArr[i].toObject();
         Layer* l = new Layer(lObj["name"].toString());
         l->setVisible(lObj["visible"].toBool(true));
-        canvas->addLayer(l); // Важно добавить до блокировки
+        canvas->addLayer(l);
 
         QJsonArray objsArr = lObj["objects"].toArray();
         for (int j = 0; j < objsArr.size(); ++j) {
@@ -142,7 +140,6 @@ void ProjectManager::loadFromJson(const QString& path) {
             f->setState(s);
             l->addObject(f);
         }
-        // Блокируем после добавления объектов, чтобы они подхватили флаг
         l->setLocked(lObj["locked"].toBool(false));
     }
 
@@ -174,7 +171,7 @@ bool ProjectManager::createFile() {
         if (canvas) {
             canvas->clearCanvas();
             canvas->setSize(wBox->value(), hBox->value());
-            canvas->newLayer(); // Создаем один пустой слой по умолчанию
+            canvas->newLayer();
             m_current_file_path = "";
             emit projectLoaded();
             emit layersUpdated();

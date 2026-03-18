@@ -5,7 +5,7 @@
 #include <QHBoxLayout>
 #include <QWidget>
 #include <QPushButton>
-#include <QLineEdit> // Заменили QLabel
+#include <QLineEdit>
 #include <QScrollArea>
 #include <vector>
 #include "canvas.h"
@@ -37,7 +37,7 @@ signals:
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
-    bool eventFilter(QObject *obj, QEvent *event) override; // НОВОЕ: Для перехвата клика по тексту
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private slots:
     void onVisibleToggled(bool checked);
@@ -47,7 +47,7 @@ private:
     static constexpr int BTN_SIZE = 30;
     QHBoxLayout* m_layout;
     QPushButton *m_lock_btn, *m_eye_btn, *m_up_btn, *m_down_btn, *m_delete_btn;
-    QLineEdit* m_layer_name; // НОВОЕ: Поле для текста
+    QLineEdit* m_layer_name;
     int m_index = 0;
     bool m_is_selected = false;
 };
@@ -59,7 +59,7 @@ public:
     void selectLayerFromOutside(int id);
 
 public slots:
-    void updateLayers(); // ТЕПЕРЬ PUBLIC SLOT, чтобы окно могло обновлять панель при загрузке!
+    void updateLayers();
 
 private:
     void refreshSelectionVisuals(int selectedIndex);

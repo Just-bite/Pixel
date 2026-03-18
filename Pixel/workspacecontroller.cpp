@@ -118,7 +118,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                 return true;
             }
 
-            // ---> ДОБАВЛЕНО: Запоминаем фигуру при клике инструментом POINTER
             if (mEvent->button() == Qt::LeftButton && m_current_tool == InstrumentType::POINTER) {
                 QGraphicsItem* item = m_view->itemAt(mEvent->pos());
                 Figure* fig = dynamic_cast<Figure*>(item);
@@ -135,7 +134,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
         }
 
         if (event->type() == QEvent::MouseMove) {
-            // ... (здесь твой код MouseMove, оставляй без изменений) ...
             QMouseEvent *mEvent = static_cast<QMouseEvent *>(event);
             if (m_is_panning) {
                 QPoint delta = mEvent->pos() - m_last_pan_pos;
@@ -167,22 +165,19 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                 return true;
             }
 
-            // ---> ДОБАВЛЕНО: Записываем Undo при отпускании кнопки
             if (mEvent->button() == Qt::LeftButton && m_current_tool == InstrumentType::POINTER) {
                 if (m_drag_target) {
                     FigureState newState = m_drag_target->getState();
-                    // Проверяем: фигура сдвинулась, и TransformBox НЕ обрабатывал это сам?
                     bool handledByTransformBox = (m_transform_box && m_transform_box->isInteracting());
 
                     if (!handledByTransformBox && newState != m_drag_start_state) {
                         m_undo_stack->push(new ModifyFigureCommand(m_drag_target, m_drag_start_state, newState));
 
-                        // Если фигура выделена, обновим координаты в контекстном меню
                         if (m_drag_target == m_selected_figure) {
                             m_context_pannel->setTarget(m_selected_figure);
                         }
                     }
-                    m_drag_target = nullptr; // Сбрасываем цель
+                    m_drag_target = nullptr;
                 }
             }
         }
@@ -232,14 +227,12 @@ void WorkspaceController::onSelectionChanged() {
         QGraphicsItem* item = selected.first();
         Object* obj = dynamic_cast<Object*>(item);
 
-        // 1. Проверяем блокировку слоя. Если заблокирован - сбрасываем выделение!
         int layerId = canvas->getLayerIdOfObject(obj);
         if (layerId != -1 && canvas->getLayersInfo()[layerId].locked) {
             item->setSelected(false);
             return;
         }
 
-        // 2. Авто-выделение слоя в панели
         if (layerId != -1 && layerId != canvas->getSelectedLayerid()) {
             if (m_layers_pannel) m_layers_pannel->selectLayerFromOutside(layerId);
             else canvas->selectLayer(layerId);
@@ -250,7 +243,6 @@ void WorkspaceController::onSelectionChanged() {
             m_transform_box = new TransformBox(item, m_undo_stack);
             m_context_pannel->setTarget(m_selected_figure);
 
-            // ПРИ ВЫДЕЛЕНИИ: Синхронизируем палитру с цветом фигуры!
             m_palette_pannel->setColor(m_context_pannel->getActiveColor());
         }
     } else {
@@ -269,7 +261,6 @@ void WorkspaceController::onMoveObjectLayerRequested(int shift) {
     int newLayerId = oldLayerId + shift;
     std::vector<LayerInfo> infos = canvas->getLayersInfo();
 
-    // Проверяем валидность индекса и блокировку
     if (newLayerId >= 0 && newLayerId < (int)infos.size() && !infos[newLayerId].locked) {
         m_undo_stack->push(new MoveObjectLayerCommand(canvas, m_selected_figure, oldLayerId, newLayerId));
         m_layers_pannel->selectLayerFromOutside(newLayerId);
@@ -286,7 +277,6 @@ void WorkspaceController::onContextPropertyChanged() {
     }
 }
 
-// КЛИК НА ЦВЕТНОЙ КВАДРАТ В ПАНЕЛИ: меняем ползунки палитры!
 void WorkspaceController::onColorTargetChanged(bool isFill) {
     m_color_target_is_fill = isFill;
     m_palette_pannel->setColor(m_context_pannel->getActiveColor());

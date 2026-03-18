@@ -19,7 +19,6 @@ public:
     const QHBoxLayout& getLayout() const;
 
 signals:
-    // Сигналы для связи с MainWindow
     void zoomInRequested();
     void zoomOutRequested();
     void fitRequested();
@@ -29,7 +28,7 @@ private:
     std::pair<int, int> m_canvas_size;
     QPushButton* m_btn_decrease;
     QPushButton* m_btn_increase;
-    QPushButton* m_btn_fit; // Новая кнопка
+    QPushButton* m_btn_fit;
     QLineEdit* m_scale_edit;
     QLabel* m_scale_label;
     QLabel* m_canvas_size_label;
@@ -38,7 +37,7 @@ private:
 
 public slots:
     void updateDisplay();
-    void onScaleEditFinished(); // Слот для ручного ввода
+    void onScaleEditFinished();
 };
 
 #endif // INFOPANNEL_H

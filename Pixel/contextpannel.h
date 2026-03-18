@@ -44,7 +44,6 @@ private:
 
     QLabel* m_lbl_placeholder;
 
-    // ИСПРАВЛЕНИЕ: m_layer_group теперь QWidget*, а не QGroupBox*
     QGroupBox *m_geometry_group, *m_style_group;
     QWidget *m_layer_group;
 

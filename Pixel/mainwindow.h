@@ -63,7 +63,6 @@ private:
 private slots:
     void updateInfoPanel();
 
-    // Новые слоты для управления камерой
     void onZoomIn();
     void onZoomOut();
     void onFitToScreen();

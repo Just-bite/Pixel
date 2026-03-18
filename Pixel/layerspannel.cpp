@@ -24,7 +24,7 @@ LayerWidget::LayerWidget(QWidget* parent) : QWidget(parent) {
 
     m_layer_name = new QLineEdit(this);
     m_layer_name->setStyleSheet("background: transparent; border: none; color: #e0e0e0;");
-    m_layer_name->installEventFilter(this); // ПЕРЕХВАТЫВАЕМ КЛИК!
+    m_layer_name->installEventFilter(this);
 
     connect(m_layer_name, &QLineEdit::editingFinished, this, [this](){
         emit nameChanged(m_layer_name->text());
@@ -64,7 +64,7 @@ void LayerWidget::setSelected(bool selected) {
 }
 void LayerWidget::setVisibleState(bool visible) { m_eye_btn->blockSignals(true); m_eye_btn->setChecked(!visible); m_eye_btn->blockSignals(false); }
 void LayerWidget::setLockedState(bool locked) { m_lock_btn->blockSignals(true); m_lock_btn->setChecked(locked); m_lock_btn->blockSignals(false); }
-void LayerWidget::onVisibleToggled(bool checked) { emit visibleToggled(!checked); } // Checked = Hidden
+void LayerWidget::onVisibleToggled(bool checked) { emit visibleToggled(!checked); } 
 void LayerWidget::onLockedToggled(bool checked) { emit lockedToggled(checked); }
 void LayerWidget::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) emit layerClicked();
@@ -73,8 +73,7 @@ void LayerWidget::mousePressEvent(QMouseEvent *event) {
 
 bool LayerWidget::eventFilter(QObject *obj, QEvent *event) {
     if (obj == m_layer_name && event->type() == QEvent::MouseButtonPress) {
-        emit layerClicked(); // Эмулируем клик по слою
-        // Возвращаем false, чтобы QLineEdit всё равно получил фокус для ввода текста
+        emit layerClicked();
     }
     return QWidget::eventFilter(obj, event);
 }

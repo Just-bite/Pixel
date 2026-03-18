@@ -16,7 +16,6 @@ MainWindow::MainWindow(QWidget *parent)
     QVBoxLayout *container_layout = new QVBoxLayout(container_main);
     container_layout->setContentsMargins(0, 0, 0, 0);
 
-    // ИСПРАВЛЕНИЕ: Убрали лишний пустой QWidget-обертку. Сразу создаем панель на container_main.
     m_context_pannel_layout = new ContextPannel(container_main);
 
     QWidget *workspace = new QWidget(container_main);
@@ -35,12 +34,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_project_manager, &ProjectManager::projectLoaded, this, [this](){
         if(m_workspace_controller) m_workspace_controller->getUndoStack()->clear();
     });
-    // Чтобы боковая панель слоев обновилась при открытии файла
+
     connect(m_project_manager, &ProjectManager::layersUpdated, this, [this](){
         if(m_layers_pannel) {
-            // Чтобы вызвать приватный метод updateLayers, можно просто симулировать выбор слоя
             m_layers_pannel->selectLayerFromOutside(0);
-            // А лучше добавь метод forceUpdate() в layerspannel.h ;)
         }
     });
 
@@ -84,7 +81,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_info_pannel_layout, &InfoPannel::fitRequested, this, &MainWindow::onFitToScreen);
     connect(m_info_pannel_layout, &InfoPannel::scaleChanged, this, &MainWindow::onSetAbsoluteZoom);
 
-    // ИСПРАВЛЕНИЕ: Добавляем контекстную панель напрямую в layout!
     container_layout->addWidget(m_context_pannel_layout, 0);
     container_layout->addWidget(workspace, 8);
     container_layout->addWidget(info_pannel, 0);
@@ -98,7 +94,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
     connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
 
-    // ВОТ СЮДА ПЕРЕНЕСИ CONNECT ДЛЯ МЕНЕДЖЕРА:
     connect(m_project_manager, &ProjectManager::projectLoaded, this, [this](){
         if(m_workspace_controller && m_workspace_controller->getUndoStack()) {
             m_workspace_controller->getUndoStack()->clear();
@@ -106,12 +101,11 @@ MainWindow::MainWindow(QWidget *parent)
         updateInfoPanel();
     });
 
-    // m_layers_pannel уже гарантированно существует!
     connect(m_project_manager, &ProjectManager::layersUpdated, m_layers_pannel, &LayersPannel::updateLayers);
 
     createMenuBar();
     QTimer::singleShot(0, this, &MainWindow::onFitToScreen);
-} // Конец конструктора MainWindow
+}
 
 
 void MainWindow::createMenuBar()
@@ -204,12 +198,10 @@ void MainWindow::updateInfoPanel()
 }
 
 MainWindow::~MainWindow() {
-    // Шаг 1: Очищаем историю, чтобы уничтожились висящие в памяти удаленные объекты
     if (m_workspace_controller && m_workspace_controller->getUndoStack()) {
         m_workspace_controller->getUndoStack()->clear();
     }
 
-    // Шаг 2: Мягко удаляем слои и фигуры через наш Canvas, обходя баги QGraphicsScene::clear()
     if (m_project_manager && m_project_manager->GetCurrentCanvas()) {
         m_project_manager->GetCurrentCanvas()->clearCanvas();
     }

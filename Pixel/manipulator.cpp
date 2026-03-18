@@ -13,14 +13,12 @@ TransformBox::TransformBox(QGraphicsItem *parent, QUndoStack* undoStack)
     setFlag(ItemIsSelectable, false);
 }
 
-// Теперь привязываемся строго к геометрии фигуры, игнорируя толщину обводки пера!
 QRectF TransformBox::targetRect() const {
     Object* obj = dynamic_cast<Object*>(parentItem());
     if (obj) return obj->getLocalRect();
     return parentItem() ? parentItem()->boundingRect() : QRectF();
 }
 
-// ИСПРАВЛЕНИЕ: Увеличен Padding, чтобы 100% покрыть маркер вращения и не оставлять следов
 QRectF TransformBox::boundingRect() const {
     return targetRect().adjusted(-40, -60, 40, 40);
 }
@@ -120,7 +118,6 @@ void TransformBox::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         parentItem()->setRotation(m_start_rotation - startLine.angleTo(currentLine));
     }
     else {
-        // Проецируем мышь в ИЗНАЧАЛЬНУЮ локальную систему (отсекая ошибки от уже происходящих изменений pos)
         QPointF localMouse = m_initial_scene_transform.inverted().map(event->scenePos());
 
         qreal left = m_start_rect.left();
@@ -138,21 +135,17 @@ void TransformBox::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         else if (m_state == ResizeBR) { right = localMouse.x(); bottom = localMouse.y(); }
 
         QRectF rawNewRect(QPointF(left, top), QPointF(right, bottom));
-        rawNewRect = rawNewRect.normalized(); // Устраняет инверсию координат
+        rawNewRect = rawNewRect.normalized();
 
-        // Защита от нулевых размеров
         if (rawNewRect.width() < 1.0) rawNewRect.setWidth(1.0);
         if (rawNewRect.height() < 1.0) rawNewRect.setHeight(1.0);
 
-        // Магия центрирования: чтобы вращение не "съезжало", мы принудительно оставляем центр в (0,0),
-        // а разницу компенсируем сдвигом pos() в пространстве сцены!
         QPointF center = rawNewRect.center();
         QRectF centeredRect = rawNewRect.translated(-center);
-        QPointF newPos = m_initial_scene_transform.map(center); // Проецируем сдвиг центра с учетом изначального вращения
+        QPointF newPos = m_initial_scene_transform.map(center);
 
         Object* obj = dynamic_cast<Object*>(parentItem());
         if (obj) {
-            // ИСПРАВЛЕНИЕ GHOSTING: Явно сообщаем Qt, что МЫ (рамка) тоже сейчас изменим размер!
             prepareGeometryChange();
 
             obj->setLocalRect(centeredRect);
@@ -166,9 +159,8 @@ void TransformBox::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     if (m_state != None) {
         Figure* fig = dynamic_cast<Figure*>(parentItem());
         if (fig) {
-            FigureState m_start_state = fig->getState(); // Добавьте m_start_state в хедер или берите из m_start_pos...
+            FigureState m_start_state = fig->getState();
 
-            // Чтобы не менять ваш заголовочный файл манипулятора, соберем state до:
             FigureState startState = fig->getState();
             startState.pos = m_start_pos;
             startState.rot = m_start_rotation;
