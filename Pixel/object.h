@@ -6,12 +6,13 @@
 #include <QPen>
 #include <QBrush>
 #include <QImage>
+#include <QPixmap>
 #include <QStyleOptionGraphicsItem>
 
 enum class FigureType {
     Ellipse,
     Rectangle,
-    Image // Новый тип для изображений
+    Image
 };
 
 struct FigureState {
@@ -22,7 +23,7 @@ struct FigureState {
     QColor fill;
     QColor stroke;
     float thickness;
-    QImage image; // Хранение самого изображения
+    QImage image;
 
     bool operator==(const FigureState& o) const {
         return pos == o.pos && rot == o.rot && rect == o.rect &&
@@ -70,6 +71,10 @@ public:
 
 private:
     FigureState m_state;
+
+    // Кэш для оптимизации отрисовки изображений
+    QPixmap m_cached_pixmap;
+    QRectF m_cached_rect;
 };
 
 #endif // OBJECT_H

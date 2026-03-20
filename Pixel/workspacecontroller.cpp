@@ -7,6 +7,7 @@
 #include <QMimeData>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QUrl>
 
 WorkspaceController::WorkspaceController(QGraphicsView* view, QGraphicsScene* scene, ProjectManager* pm, ContextPannel* cp, PalettePannel* pp, LayersPannel* lp, QObject *parent)
     : QObject(parent), m_view(view), m_project_manager(pm), m_context_pannel(cp), m_palette_pannel(pp), m_layers_pannel(lp), m_last_mouse_scene_pos(0,0)
@@ -42,7 +43,13 @@ void WorkspaceController::setCurrentTool(InstrumentType type) {
     else if (m_current_tool == InstrumentType::FIGURE) m_view->setCursor(Qt::CrossCursor);
     else m_view->setCursor(Qt::ArrowCursor);
 
+    // Сначала задаем общую видимость вкладок
     m_context_pannel->setMode(m_selected_figure != nullptr, m_current_tool == InstrumentType::FIGURE, getToolName(type));
+
+    // Если объект выделен, перезаписываем скрытие Style через setTarget
+    if (m_selected_figure) {
+        m_context_pannel->setTarget(m_selected_figure);
+    }
 }
 
 void WorkspaceController::updateTransformBoxScale() {
@@ -67,7 +74,7 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
             if (kEvent->key() == Qt::Key_C && m_selected_figure) {
                 m_clipboard_state = m_selected_figure->getState();
                 m_has_clipboard = true;
-                QApplication::clipboard()->clear(); // Очищаем системный буфер, чтобы избежать конфликтов при Ctrl+V
+                QApplication::clipboard()->clear(); // Избегаем конфликта с системным буфером
                 return true;
             }
             if (kEvent->key() == Qt::Key_X && m_selected_figure) {
@@ -82,27 +89,37 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                 if (activeId >= 0 && !canvas->getLayersInfo()[activeId].locked) {
                     const QClipboard *clipboard = QApplication::clipboard();
                     const QMimeData *mimeData = clipboard->mimeData();
+                    QImage img;
 
-                    // 1. Приоритет вставки картинки из ОС, если буфер обмена имеет изображение
+                    // Извлекаем картинку напрямую или из пути к файлу (если скопировали файл в проводнике)
                     if (mimeData->hasImage()) {
-                        QImage img = qvariant_cast<QImage>(mimeData->imageData());
-                        if (!img.isNull()) {
-                            Figure* fig = new Figure();
-                            FigureState s;
-                            s.type = FigureType::Image;
-                            s.image = img;
-                            s.pos = m_last_mouse_scene_pos;
-                            s.rect = QRectF(-img.width()/2.0, -img.height()/2.0, img.width(), img.height());
-                            fig->setState(s);
-                            m_view->scene()->clearSelection();
-                            canvas->addObjectToSelectedLayer(fig);
-                            m_undo_stack->push(new AddObjectCommand(fig->parentItem(), fig));
-                            fig->setSelected(true);
-                            return true;
+                        img = qvariant_cast<QImage>(mimeData->imageData());
+                    } else if (mimeData->hasUrls()) {
+                        for (const QUrl &url : mimeData->urls()) {
+                            if (url.isLocalFile()) {
+                                QImage temp(url.toLocalFile());
+                                if (!temp.isNull()) { img = temp; break; }
+                            }
                         }
                     }
 
-                    // 2. Иначе вставляем внутренний скопированный объект
+                    // 1. Приоритет системного буфера обмена (внешнее копирование)
+                    if (!img.isNull()) {
+                        Figure* fig = new Figure();
+                        FigureState s;
+                        s.type = FigureType::Image;
+                        s.image = img;
+                        s.pos = m_last_mouse_scene_pos;
+                        s.rect = QRectF(-img.width()/2.0, -img.height()/2.0, img.width(), img.height());
+                        fig->setState(s);
+                        m_view->scene()->clearSelection();
+                        canvas->addObjectToSelectedLayer(fig);
+                        m_undo_stack->push(new AddObjectCommand(fig->parentItem(), fig));
+                        fig->setSelected(true);
+                        return true;
+                    }
+
+                    // 2. Вставка нашего внутреннего скопированного объекта
                     if (m_has_clipboard) {
                         m_view->scene()->clearSelection();
                         Figure* fig = new Figure();
@@ -126,7 +143,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
             return true;
         }
 
-        // Логика перемещения объекта или камеры по стрелочкам
         if (kEvent->key() == Qt::Key_Up || kEvent->key() == Qt::Key_Down ||
             kEvent->key() == Qt::Key_Left || kEvent->key() == Qt::Key_Right) {
 
@@ -164,7 +180,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
         }
     }
 
-    // Обработка Drag-and-Drop
     if (event->type() == QEvent::DragEnter) {
         QDragEnterEvent *dEvent = static_cast<QDragEnterEvent*>(event);
         if (dEvent->mimeData()->hasImage() || dEvent->mimeData()->hasUrls()) {
@@ -332,18 +347,22 @@ void WorkspaceController::onSelectionChanged() {
         }
 
         m_selected_figure = dynamic_cast<Figure*>(obj);
+
+        // Сначала устанавливаем Mode (он откроет Style по умолчанию для выбранного)
+        m_context_pannel->setMode(m_selected_figure != nullptr, m_current_tool == InstrumentType::FIGURE, getToolName(m_current_tool));
+
         if (m_selected_figure) {
             m_transform_box = new TransformBox(item, m_undo_stack);
             updateTransformBoxScale();
+            // Затем Target (он переопределит Style и скроет его, если это Image)
             m_context_pannel->setTarget(m_selected_figure);
-
             m_palette_pannel->setColor(m_context_pannel->getActiveColor());
         }
     } else {
         m_selected_figure = nullptr;
+        m_context_pannel->setMode(false, m_current_tool == InstrumentType::FIGURE, getToolName(m_current_tool));
         m_context_pannel->setTarget(nullptr);
     }
-    m_context_pannel->setMode(m_selected_figure != nullptr, m_current_tool == InstrumentType::FIGURE, getToolName(m_current_tool));
 }
 
 void WorkspaceController::onMoveObjectLayerRequested(int shift) {

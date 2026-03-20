@@ -21,8 +21,20 @@ void Figure::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
 
     if (m_state.type == FigureType::Image) {
         if (!m_state.image.isNull()) {
-            // Отрисовка изображения с растяжением/сужением по заданному размеру rect
-            painter->drawImage(m_state.rect, m_state.image);
+            // Кэшируем QPixmap, чтобы не рескейлить тяжелую картинку каждый кадр (при перетаскивании)
+            if (m_cached_pixmap.isNull() || m_cached_rect != m_state.rect) {
+                QSize targetSize = m_state.rect.size().toSize();
+                if (targetSize.width() > 0 && targetSize.height() > 0) {
+                    m_cached_pixmap = QPixmap::fromImage(m_state.image).scaled(
+                        targetSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+                } else {
+                    m_cached_pixmap = QPixmap();
+                }
+                m_cached_rect = m_state.rect;
+            }
+            if (!m_cached_pixmap.isNull()) {
+                painter->drawPixmap(m_state.rect.topLeft(), m_cached_pixmap);
+            }
         }
     } else {
         painter->setPen(QPen(m_state.stroke, m_state.thickness));
@@ -76,6 +88,7 @@ void Figure::setState(const FigureState& state)
 {
     prepareGeometryChange();
     m_state = state;
+    m_cached_pixmap = QPixmap(); // Сбрасываем кэш, чтобы принудительно перерисовать, если изменилось само изображение
     setPos(state.pos);
     setRotation(state.rot);
     update();
