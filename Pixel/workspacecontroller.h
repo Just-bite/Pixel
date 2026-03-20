@@ -30,6 +30,7 @@ public slots:
     void onColorPickedPreview(const QColor& color);
     void onColorPickedCommit(const QColor& color);
     void onMoveObjectLayerRequested(int shift);
+    void updateTransformBoxScale();
 
 signals:
     void viewportChanged();
@@ -56,6 +57,7 @@ private:
     bool m_space_pressed = false, m_is_panning = false, m_is_drawing = false;
     QPoint m_last_pan_pos;
     QPointF m_draw_start_pos;
+    QPointF m_last_mouse_scene_pos; // Для отслеживания курсора
     Figure* m_temp_figure = nullptr;
 
     bool m_color_target_is_fill = true;

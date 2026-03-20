@@ -19,19 +19,30 @@ void Figure::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
 
-    painter->setPen(QPen(m_state.stroke, m_state.thickness));
-    painter->setBrush(m_state.fill.alpha() > 0 ? QBrush(m_state.fill) : Qt::NoBrush);
+    if (m_state.type == FigureType::Image) {
+        if (!m_state.image.isNull()) {
+            // Отрисовка изображения с растяжением/сужением по заданному размеру rect
+            painter->drawImage(m_state.rect, m_state.image);
+        }
+    } else {
+        painter->setPen(QPen(m_state.stroke, m_state.thickness));
+        painter->setBrush(m_state.fill.alpha() > 0 ? QBrush(m_state.fill) : Qt::NoBrush);
 
-    if (m_state.type == FigureType::Ellipse)
-        painter->drawEllipse(m_state.rect);
-    else if (m_state.type == FigureType::Rectangle)
-        painter->drawRect(m_state.rect);
+        if (m_state.type == FigureType::Ellipse)
+            painter->drawEllipse(m_state.rect);
+        else if (m_state.type == FigureType::Rectangle)
+            painter->drawRect(m_state.rect);
+    }
 
     painter->restore();
 }
 
 QRectF Figure::boundingRect() const
 {
+    if (m_state.type == FigureType::Image) {
+        return m_state.rect;
+    }
+
     qreal offset = m_state.thickness / 2.0;
     return m_state.rect.adjusted(-offset, -offset, offset, offset);
 }
@@ -40,7 +51,7 @@ QPainterPath Figure::shape() const
 {
     QPainterPath path;
     if (m_state.type == FigureType::Ellipse) path.addEllipse(m_state.rect);
-    else path.addRect(m_state.rect);
+    else path.addRect(m_state.rect); // Изображения тоже прямоугольные
     return path;
 }
 

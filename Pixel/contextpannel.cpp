@@ -119,23 +119,35 @@ void ContextPannel::setTarget(Figure* figure) {
     if (!figure) return;
     blockSignals(true);
     FigureState s = figure->getState();
-    m_type_box->setCurrentIndex(m_type_box->findData(static_cast<int>(s.type)));
+
+    // Скрываем Style для изображений
+    if (s.type == FigureType::Image) {
+        m_style_group->setVisible(false);
+    } else {
+        m_style_group->setVisible(true);
+        m_type_box->setCurrentIndex(m_type_box->findData(static_cast<int>(s.type)));
+        m_thick_box->setValue(s.thickness);
+        updateColorButtonsUI();
+    }
+
     m_x_box->setValue(s.pos.x());
     m_y_box->setValue(s.pos.y());
     m_w_box->setValue(s.rect.width());
     m_h_box->setValue(s.rect.height());
     m_rot_box->setValue(s.rot);
-    m_thick_box->setValue(s.thickness);
-    updateColorButtonsUI();
     blockSignals(false);
 }
 
 FigureState ContextPannel::getUIState(const FigureState& baseState) const {
     FigureState s = baseState;
-    s.type = static_cast<FigureType>(m_type_box->currentData().toInt());
-    s.pos = QPointF(m_x_box->value(), m_y_box->value()); s.rot = m_rot_box->value();
+    if (s.type != FigureType::Image) {
+        s.type = static_cast<FigureType>(m_type_box->currentData().toInt());
+        s.thickness = m_thick_box->value();
+    }
+    s.pos = QPointF(m_x_box->value(), m_y_box->value());
+    s.rot = m_rot_box->value();
     s.rect = QRectF(-m_w_box->value()/2.0, -m_h_box->value()/2.0, m_w_box->value(), m_h_box->value());
-    s.thickness = m_thick_box->value(); return s;
+    return s;
 }
 
 void ContextPannel::setDefaultColor(bool isFill, const QColor& color) {

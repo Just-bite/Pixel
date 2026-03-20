@@ -28,6 +28,9 @@ MainWindow::MainWindow(QWidget *parent)
     m_scene_main->setSceneRect(-10000, -10000, 20000, 20000);
     m_view_main->viewport()->setMouseTracking(true);
 
+    // Добавляем поддержку Drag-and-Drop для Canvas
+    m_view_main->setAcceptDrops(true);
+    m_view_main->viewport()->setAcceptDrops(true);
 
     m_project_manager->createProject();
 
@@ -52,7 +55,7 @@ MainWindow::MainWindow(QWidget *parent)
     QWidget *palette_layers_pannel = new QWidget(workspace);
     QVBoxLayout *palette_layers_pannel_layout = new QVBoxLayout(palette_layers_pannel);
     palette_layers_pannel->setStyleSheet("border: 1px solid #555555; ");
-    palette_layers_pannel->setMaximumWidth(300); // Немного сузили для компактности
+    palette_layers_pannel->setMaximumWidth(300);
 
     Layer *layer1 = new Layer("layer1");
     canvas->addLayer(layer1);
@@ -88,7 +91,6 @@ MainWindow::MainWindow(QWidget *parent)
     container_layout->setSpacing(0);
 
     setCentralWidget(container_main);
-    updateInfoPanel();
 
     m_workspace_controller = new WorkspaceController(m_view_main, m_scene_main, m_project_manager, m_context_pannel_layout, palette_widget, m_layers_pannel, this);
     connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
@@ -103,6 +105,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(m_project_manager, &ProjectManager::layersUpdated, m_layers_pannel, &LayersPannel::updateLayers);
 
+    updateInfoPanel();
     createMenuBar();
     QTimer::singleShot(0, this, &MainWindow::onFitToScreen);
 }
@@ -150,12 +153,10 @@ void MainWindow::createMenuBar()
     QMenu *view_menu = menu_bar->addMenu("&View");
 
     QAction *zoom_in_act = view_menu->addAction("Zoom &In");
-    // Оставляем только ZoomIn и Ctrl+= (иногда плюс без шифта это равно)
     zoom_in_act->setShortcuts({QKeySequence::ZoomIn, QKeySequence(Qt::CTRL | Qt::Key_Equal)});
     connect(zoom_in_act, &QAction::triggered, this, &MainWindow::onZoomIn);
 
     QAction *zoom_out_act = view_menu->addAction("Zoom &Out");
-    // Убрали дубликат! QKeySequence::ZoomOut уже включает в себя Ctrl+-
     zoom_out_act->setShortcut(QKeySequence::ZoomOut);
     connect(zoom_out_act, &QAction::triggered, this, &MainWindow::onZoomOut);
 
@@ -195,6 +196,10 @@ void MainWindow::updateInfoPanel()
 
     m_info_pannel_layout->setScale(scale);
     m_info_pannel_layout->updateScaleDisplay(scale);
+
+    if (m_workspace_controller) {
+        m_workspace_controller->updateTransformBoxScale();
+    }
 }
 
 MainWindow::~MainWindow() {

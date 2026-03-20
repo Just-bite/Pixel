@@ -37,6 +37,10 @@ public:
     void undo() override;
     void redo() override;
 
+    // Добавлены id и mergeWith для группировки движений по стрелочкам
+    int id() const override;
+    bool mergeWith(const QUndoCommand *command) override;
+
 private:
     Figure* m_figure;
     FigureState m_old_state;

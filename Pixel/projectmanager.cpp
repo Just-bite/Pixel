@@ -10,6 +10,8 @@
 #include <QFormLayout>
 #include <QSpinBox>
 #include <QDialogButtonBox>
+#include <QBuffer>
+#include <QByteArray>
 
 ProjectManager::ProjectManager(QWidget* parent) : QWidget(parent), m_selected_project(nullptr) {}
 
@@ -91,6 +93,16 @@ void ProjectManager::saveToJson(const QString& path) {
                 sObj["rot"] = s.rot; sObj["thick"] = s.thickness;
                 sObj["fill"] = s.fill.name(QColor::HexArgb);
                 sObj["stroke"] = s.stroke.name(QColor::HexArgb);
+
+                // Сохранение картинки в Base64 формат PNG
+                if (s.type == FigureType::Image && !s.image.isNull()) {
+                    QByteArray byteArray;
+                    QBuffer buffer(&byteArray);
+                    buffer.open(QIODevice::WriteOnly);
+                    s.image.save(&buffer, "PNG");
+                    sObj["image"] = QString::fromLatin1(byteArray.toBase64());
+                }
+
                 objsArr.append(sObj);
             }
         }
@@ -137,6 +149,13 @@ void ProjectManager::loadFromJson(const QString& path) {
             s.thickness = sObj["thick"].toDouble();
             s.fill = QColor(sObj["fill"].toString());
             s.stroke = QColor(sObj["stroke"].toString());
+
+            // Восстановление картинки
+            if (s.type == FigureType::Image && sObj.contains("image")) {
+                QByteArray byteArray = QByteArray::fromBase64(sObj["image"].toString().toLatin1());
+                s.image.loadFromData(byteArray, "PNG");
+            }
+
             f->setState(s);
             l->addObject(f);
         }

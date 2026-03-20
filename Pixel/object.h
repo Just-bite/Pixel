@@ -5,11 +5,13 @@
 #include <QPainter>
 #include <QPen>
 #include <QBrush>
+#include <QImage>
 #include <QStyleOptionGraphicsItem>
 
 enum class FigureType {
     Ellipse,
-    Rectangle
+    Rectangle,
+    Image // Новый тип для изображений
 };
 
 struct FigureState {
@@ -20,10 +22,12 @@ struct FigureState {
     QColor fill;
     QColor stroke;
     float thickness;
+    QImage image; // Хранение самого изображения
 
     bool operator==(const FigureState& o) const {
         return pos == o.pos && rot == o.rot && rect == o.rect &&
-               type == o.type && fill == o.fill && stroke == o.stroke && thickness == o.thickness;
+               type == o.type && fill == o.fill && stroke == o.stroke &&
+               thickness == o.thickness && image == o.image;
     }
     bool operator!=(const FigureState& o) const { return !(*this == o); }
 };

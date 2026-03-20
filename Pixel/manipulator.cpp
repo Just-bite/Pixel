@@ -13,20 +13,33 @@ TransformBox::TransformBox(QGraphicsItem *parent, QUndoStack* undoStack)
     setFlag(ItemIsSelectable, false);
 }
 
+void TransformBox::setViewScale(qreal scale) {
+    prepareGeometryChange();
+    m_view_scale = scale > 0.0 ? scale : 1.0;
+    update();
+}
+
 QRectF TransformBox::targetRect() const {
     Object* obj = dynamic_cast<Object*>(parentItem());
     if (obj) return obj->getLocalRect();
     return parentItem() ? parentItem()->boundingRect() : QRectF();
 }
 
-QRectF TransformBox::boundingRect() const {
-    return targetRect().adjusted(-40, -60, 40, 40);
-}
-
 void getScaleFromMatrix(const QTransform& t, qreal& sx, qreal& sy) {
     sx = qSqrt(t.m11()*t.m11() + t.m12()*t.m12());
     sy = qSqrt(t.m21()*t.m21() + t.m22()*t.m22());
     if (sx == 0) sx = 1; if (sy == 0) sy = 1;
+}
+
+QRectF TransformBox::boundingRect() const {
+    qreal sx, sy; getScaleFromMatrix(parentItem()->sceneTransform(), sx, sy);
+    qreal actualSx = sx * m_view_scale;
+    qreal actualSy = sy * m_view_scale;
+
+    // Рассчитываем динамический отступ, чтобы ручки не обрезались при сильном отдалении
+    qreal padX = 100.0 / actualSx;
+    qreal padY = 100.0 / actualSy;
+    return targetRect().adjusted(-padX, -padY, padX, padY);
 }
 
 QRectF TransformBox::handleRect(int xPos, int yPos) const {
@@ -36,13 +49,17 @@ QRectF TransformBox::handleRect(int xPos, int yPos) const {
     if (yPos == -1) y = rect.top(); else if (yPos == 1) y = rect.bottom();
 
     qreal sx, sy; getScaleFromMatrix(parentItem()->sceneTransform(), sx, sy);
-    return QRectF(x - (5.0 / sx), y - (5.0 / sy), 10.0 / sx, 10.0 / sy);
+    qreal actualSx = sx * m_view_scale;
+    qreal actualSy = sy * m_view_scale;
+    return QRectF(x - (5.0 / actualSx), y - (5.0 / actualSy), 10.0 / actualSx, 10.0 / actualSy);
 }
 
 QRectF TransformBox::rotateHandle() const {
     QRectF rect = targetRect();
     qreal sx, sy; getScaleFromMatrix(parentItem()->sceneTransform(), sx, sy);
-    return QRectF(rect.center().x() - (5.0 / sx), rect.top() - (25.0 / sy) - (5.0 / sy), 10.0 / sx, 10.0 / sy);
+    qreal actualSx = sx * m_view_scale;
+    qreal actualSy = sy * m_view_scale;
+    return QRectF(rect.center().x() - (5.0 / actualSx), rect.top() - (25.0 / actualSy) - (5.0 / actualSy), 10.0 / actualSx, 10.0 / actualSy);
 }
 
 QPainterPath TransformBox::shape() const {
@@ -65,6 +82,7 @@ void TransformBox::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
 
+    // Рисуем рамку и соединительную линию. Толщина = 0 означает толщину 1px визуально
     painter->setPen(QPen(Qt::blue, 0, Qt::DashLine));
     painter->setBrush(Qt::NoBrush);
     painter->drawRect(targetRect());
@@ -159,8 +177,6 @@ void TransformBox::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     if (m_state != None) {
         Figure* fig = dynamic_cast<Figure*>(parentItem());
         if (fig) {
-            FigureState m_start_state = fig->getState();
-
             FigureState startState = fig->getState();
             startState.pos = m_start_pos;
             startState.rot = m_start_rotation;

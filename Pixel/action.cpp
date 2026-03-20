@@ -47,6 +47,21 @@ void ModifyFigureCommand::redo() {
     if (m_figure) m_figure->setState(m_new_state);
 }
 
+// Позволяет склеивать подряд идущие команды (например, при зажатой стрелочке перемещения)
+int ModifyFigureCommand::id() const {
+    return 1;
+}
+
+bool ModifyFigureCommand::mergeWith(const QUndoCommand *command) {
+    if (command->id() != id()) return false;
+    const ModifyFigureCommand *cmd = static_cast<const ModifyFigureCommand *>(command);
+    if (m_figure != cmd->m_figure) return false;
+
+    // Перезаписываем новое состояние, оставляя первоначальное (старое) без изменений
+    m_new_state = cmd->m_new_state;
+    return true;
+}
+
 MoveObjectLayerCommand::MoveObjectLayerCommand(Canvas* canvas, Object* obj, int oldLayerId, int newLayerId, QUndoCommand *p)
     : QUndoCommand(p),
     m_canvas(canvas),
