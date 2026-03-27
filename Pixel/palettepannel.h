@@ -15,7 +15,7 @@ class ColorPickerArea : public QWidget {
 public:
     explicit ColorPickerArea(QWidget* parent = nullptr);
     void setHue(int hue);
-    void setCursorColor(const QColor& color); // НОВОЕ: для движения курсора
+    void setCursorColor(const QColor& color);
     QColor currentColor() const;
 
 signals:
@@ -32,9 +32,12 @@ protected:
 private:
     void updateImage();
     void pick(const QPoint& pos, bool commit);
+    void updateCursorPos();
     int m_hue = 0;
     QPoint m_pos;
     QImage m_image;
+    int m_sat = 0;
+    int m_val = 0;
 };
 
 class PalettePannel : public QWidget {

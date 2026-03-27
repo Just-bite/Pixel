@@ -39,6 +39,7 @@ void InstrumentPannel::fillInstumentIcon()
     m_instrument_icon[InstrumentType::SCISSORS] = {QIcon(":/application_icon/scissors.svg"), QString("Scissors")};
     m_instrument_icon[InstrumentType::FILL] = {QIcon(":/application_icon/bucket.svg"), QString("Fill (B)")};
     m_instrument_icon[InstrumentType::POINTER] = {QIcon(":/application_icon/arrow.svg"), QString("Pointer (I)")};
+    m_instrument_icon[InstrumentType::TEXT] = {QIcon(":/application_icon/font.svg"), QString("Text (T)")};
     m_instrument_icon[InstrumentType::FIGURE] = {QIcon(":/application_icon/figure.svg"), QString("Figure (F)")};
 }
 
@@ -66,13 +67,11 @@ void InstrumentPannel::setButtonsIcons()
             m_bttns_instruments[i]->setIcon(m_instrument_icon[type].first);
             m_bttns_instruments[i]->setToolTip(m_instrument_icon[type].second);
 
-            // Если это не Указатель, Рука или Фигура - отключаем кнопку
-            if (type != InstrumentType::POINTER && type != InstrumentType::HAND && type != InstrumentType::FIGURE) {
+        if (type != InstrumentType::POINTER && type != InstrumentType::HAND && type != InstrumentType::FIGURE && type != InstrumentType::TEXT) {
                 m_bttns_instruments[i]->setEnabled(false);
                 m_bttns_instruments[i]->setToolTip(m_instrument_icon[type].second + " (Not implemented)");
             }
         } else {
-            // Если иконки нет - прячем кнопку вообще
             m_bttns_instruments[i]->hide();
         }
     }

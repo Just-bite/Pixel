@@ -3,7 +3,7 @@
 
 #include <QVBoxLayout>
 #include <QPushButton>
-#include <QButtonGroup> // Добавили для эксклюзивного выбора кнопок
+#include <QButtonGroup>
 #include <QStyle>
 #include <QString>
 #include <unordered_map>
@@ -16,6 +16,7 @@ enum class InstrumentType
     SCISSORS,
     FILL,
     HAND,
+    TEXT,
     FIGURE,
 };
 
@@ -27,7 +28,6 @@ public:
     const QVBoxLayout& getLayout() const;
 
 signals:
-    // Сигнал, сообщающий Контроллеру, что инструмент сменился
     void instrumentSelected(InstrumentType type);
 
 private:
@@ -41,7 +41,7 @@ private:
     QVBoxLayout* m_instrument_pannel_layout;
 
     std::vector<QPushButton*> m_bttns_instruments;
-    QButtonGroup* m_button_group; // Группа кнопок
+    QButtonGroup* m_button_group;
     std::unordered_map<InstrumentType,std::pair<QIcon,QString>> m_instrument_icon;
 };
 

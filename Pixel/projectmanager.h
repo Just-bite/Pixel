@@ -14,7 +14,7 @@ public:
     void createProject();
 
 signals:
-    // Сигнал окну, чтобы оно сбросило историю Undo при открытии файла
+    void projectAboutToClose();
     void projectLoaded();
     void layersUpdated();
 
@@ -23,7 +23,7 @@ public slots:
     bool openFile();
     bool saveFile();
     bool saveAsFile();
-    bool exportPng(); // Заменил printFile на exportPng
+    bool exportPng();
 
 private:
     void saveToJson(const QString& path);
@@ -31,7 +31,7 @@ private:
 
     std::vector<Project*> m_projects;
     Project* m_selected_project;
-    QString m_current_file_path; // Храним путь текущего проекта
+    QString m_current_file_path;
 };
 
 #endif // PROJECTMANAGER_H

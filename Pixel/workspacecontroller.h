@@ -6,6 +6,7 @@
 #include <QGraphicsScene>
 #include <QEvent>
 #include <QUndoStack>
+#include <QInputDialog>
 
 #include "projectmanager.h"
 #include "object.h"
@@ -30,6 +31,7 @@ public slots:
     void onColorPickedPreview(const QColor& color);
     void onColorPickedCommit(const QColor& color);
     void onMoveObjectLayerRequested(int shift);
+    void clearState();
 
 signals:
     void viewportChanged();
@@ -67,6 +69,14 @@ private:
 
     Figure* m_drag_target = nullptr;
     FigureState m_drag_start_state;
+
+    TextObject* m_selected_text = nullptr;
+    TextObject* m_temp_text = nullptr;
+    TextObject* m_drag_target_text = nullptr;
+    TextState m_drag_start_text_state;
+    TextState m_text_state_before_preview; // Для палитры
+    TextState m_clipboard_text_state;      // Для копипаста
+    bool m_clipboard_is_text = false;      // Что именно скопировали?
 };
 
 #endif // WORKSPACECONTROLLER_H

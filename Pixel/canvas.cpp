@@ -6,13 +6,16 @@ Canvas::Canvas(QObject* parent) : QObject(parent), m_parent_sceene(nullptr), m_s
 void Canvas::addLayer(Layer* layer) {
     if (!layer) return;
     m_layers.push_back(layer);
+    if (m_layer_counter < (int)m_layers.size()) {
+        m_layer_counter = m_layers.size();
+    }
     if (m_parent_sceene) m_parent_sceene->addItem(layer);
     if (!m_selected) selectLayer(0);
     renderCanvas();
 }
 
 void Canvas::newLayer() {
-    m_layer_counter++; // Счетчик всегда растет, даже если удаляли слои
+    m_layer_counter++;
     Layer* l = new Layer();
     l->setName(QString("layer%1").arg(m_layer_counter));
     addLayer(l);
