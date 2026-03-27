@@ -43,7 +43,6 @@ private:
     void addLabeledWidget(QHBoxLayout* layout, const QString& text, QWidget* widget);
 
     QLabel* m_lbl_placeholder;
-
     QGroupBox *m_geometry_group, *m_style_group;
     QWidget *m_layer_group;
 

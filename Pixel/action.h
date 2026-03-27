@@ -13,7 +13,6 @@ public:
     ~AddObjectCommand();
     void undo() override;
     void redo() override;
-
 private:
     QGraphicsItem* m_parent_layer;
     QGraphicsItem* m_object;
@@ -25,7 +24,6 @@ public:
     ~DeleteObjectCommand();
     void undo() override;
     void redo() override;
-
 private:
     QGraphicsItem* m_parent_layer;
     QGraphicsItem* m_object;
@@ -36,11 +34,6 @@ public:
     ModifyFigureCommand(Figure* figure, const FigureState& oldState, const FigureState& newState, QUndoCommand *parent = nullptr);
     void undo() override;
     void redo() override;
-
-    // Добавлены id и mergeWith для группировки движений по стрелочкам
-    int id() const override;
-    bool mergeWith(const QUndoCommand *command) override;
-
 private:
     Figure* m_figure;
     FigureState m_old_state;
@@ -52,7 +45,6 @@ public:
     MoveObjectLayerCommand(Canvas* canvas, Object* obj, int oldLayerId, int newLayerId, QUndoCommand *parent = nullptr);
     void undo() override;
     void redo() override;
-
 private:
     Canvas* m_canvas;
     Object* m_object;
