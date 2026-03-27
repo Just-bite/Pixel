@@ -42,6 +42,19 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     style_layout->addSpacing(5);
     addLabeledWidget(style_layout, "Outline:", m_btn_stroke_color);
 
+    m_text_group = new QGroupBox("Text", this);
+    QHBoxLayout* text_layout = new QHBoxLayout(m_text_group);
+    text_layout->setContentsMargins(5, 5, 5, 5);
+    m_font_box = new QFontComboBox(this); m_font_box->setFixedWidth(120);
+    m_font_size_box = createSpinBox(1, 500);
+    addLabeledWidget(text_layout, "Font:", m_font_box);
+    addLabeledWidget(text_layout, "Size:", m_font_size_box);
+    main_layout->addWidget(m_text_group);
+
+    m_default_text_state.color = Qt::black;
+    m_default_text_state.font = QFont("Arial", 16);
+
+    // Убираем QGroupBox (рамку), делаем просто QWidget
     m_layer_group = new QWidget(this);
     QHBoxLayout* layer_layout = new QHBoxLayout(m_layer_group);
     layer_layout->setContentsMargins(5, 10, 5, 5);
@@ -80,8 +93,10 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     connect(m_h_box, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onAnyUIChanged);
     connect(m_rot_box, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onAnyUIChanged);
     connect(m_thick_box, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onAnyUIChanged);
+    connect(m_font_box, &QFontComboBox::currentFontChanged, this, &ContextPannel::onAnyUIChanged);
+    connect(m_font_size_box, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onAnyUIChanged);
 
-    setMode(false, false, "Pointer");
+    setMode(false, false, false, false, "Pointer");
 }
 
 void ContextPannel::addLabeledWidget(QHBoxLayout* layout, const QString& text, QWidget* widget) {
@@ -94,20 +109,22 @@ QDoubleSpinBox* ContextPannel::createSpinBox(double min, double max) {
     return sb;
 }
 
-void ContextPannel::setMode(bool isFigureSelected, bool isFigureTool, const QString& toolName) {
-    m_lbl_placeholder->setVisible(!isFigureSelected && !isFigureTool);
+void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, const QString& toolName) {
+    bool somethingSelected = isFigSel || isTextSel;
+    m_lbl_placeholder->setVisible(!somethingSelected && !isFigTool && !isTextTool);
     if (!toolName.isEmpty()) m_lbl_placeholder->setText(QString("Tool: %1. No specific settings.").arg(toolName));
 
-    m_geometry_group->setVisible(isFigureSelected);
-    m_style_group->setVisible(isFigureSelected || isFigureTool);
-    m_layer_group->setVisible(isFigureSelected);
+    m_geometry_group->setVisible(somethingSelected);
+    m_style_group->setVisible(isFigSel || isFigTool);
+    m_text_group->setVisible(isTextSel || isTextTool);
+    m_layer_group->setVisible(somethingSelected);
 
-    if (!isFigureSelected) {
-        m_current_target = nullptr;
+    if (!somethingSelected) {
+        m_current_target = nullptr; m_current_text_target = nullptr;
         blockSignals(true);
-        if (isFigureTool) {
-            m_type_box->setCurrentIndex(m_type_box->findData(static_cast<int>(m_default_state.type)));
-            m_thick_box->setValue(m_default_state.thickness);
+        if (isTextTool) {
+            m_font_box->setCurrentFont(m_default_text_state.font);
+            m_font_size_box->setValue(m_default_text_state.font.pointSizeF());
         }
         updateColorButtonsUI();
         blockSignals(false);
@@ -138,6 +155,29 @@ void ContextPannel::setTarget(Figure* figure) {
     blockSignals(false);
 }
 
+void ContextPannel::setTarget(TextObject* textObj) {
+    m_current_target = nullptr; m_current_text_target = textObj;
+    if (!textObj) return;
+    blockSignals(true);
+    TextState s = textObj->getState();
+    m_font_box->setCurrentFont(s.font);
+    m_font_size_box->setValue(s.font.pointSizeF());
+    m_x_box->setValue(s.pos.x()); m_y_box->setValue(s.pos.y());
+    m_w_box->setValue(s.rect.width()); m_h_box->setValue(s.rect.height());
+    m_rot_box->setValue(s.rot);
+    updateColorButtonsUI();
+    blockSignals(false);
+}
+
+TextState ContextPannel::getUITextState(const TextState& baseState) const {
+    TextState s = baseState;
+    s.font = m_font_box->currentFont();
+    s.font.setPointSizeF(m_font_size_box->value());
+    s.pos = QPointF(m_x_box->value(), m_y_box->value()); s.rot = m_rot_box->value();
+    s.rect = QRectF(-m_w_box->value()/2.0, -m_h_box->value()/2.0, m_w_box->value(), m_h_box->value());
+    return s;
+}
+
 FigureState ContextPannel::getUIState(const FigureState& baseState) const {
     FigureState s = baseState;
     if (s.type != FigureType::Image) {
@@ -159,6 +199,8 @@ void ContextPannel::setDefaultColor(bool isFill, const QColor& color) {
 }
 
 QColor ContextPannel::getActiveColor() const {
+    if (m_current_text_target)
+        return m_current_text_target->getState().color;
     FigureState s = m_current_target ? m_current_target->getState() : m_default_state;
     return m_active_is_fill ? s.fill : s.stroke;
 }
@@ -195,6 +237,8 @@ void ContextPannel::onMoveDownClicked() {
 }
 void ContextPannel::onAnyUIChanged() {
     if (m_current_target)
+        emit propertyChanged();
+    else if (m_current_text_target)
         emit propertyChanged();
     else {
         m_default_state.type = static_cast<FigureType>(m_type_box->currentData().toInt());

@@ -14,6 +14,7 @@ public:
     void createProject();
 
 signals:
+    void projectAboutToClose();
     void projectLoaded();
     void layersUpdated();
 

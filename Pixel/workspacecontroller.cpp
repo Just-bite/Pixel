@@ -8,6 +8,7 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QUrl>
+#include <QInputDialog> // Обязательно для всплывающего окна текста
 
 WorkspaceController::WorkspaceController(QGraphicsView* view, QGraphicsScene* scene, ProjectManager* pm, ContextPannel* cp, PalettePannel* pp, LayersPannel* lp, QObject *parent)
     : QObject(parent), m_view(view), m_project_manager(pm), m_context_pannel(cp), m_palette_pannel(pp), m_layers_pannel(lp), m_last_mouse_scene_pos(0,0)
@@ -34,6 +35,7 @@ QString WorkspaceController::getToolName(InstrumentType type) {
     if (type == InstrumentType::POINTER) return "Pointer";
     if (type == InstrumentType::HAND) return "Hand";
     if (type == InstrumentType::FIGURE) return "Figure";
+    if (type == InstrumentType::TEXT) return "Text";
     return "Unknown Tool";
 }
 
@@ -41,6 +43,7 @@ void WorkspaceController::setCurrentTool(InstrumentType type) {
     m_current_tool = type;
     if (m_current_tool == InstrumentType::HAND) m_view->setCursor(Qt::OpenHandCursor);
     else if (m_current_tool == InstrumentType::FIGURE) m_view->setCursor(Qt::CrossCursor);
+    else if (m_current_tool == InstrumentType::TEXT) m_view->setCursor(Qt::IBeamCursor);
     else m_view->setCursor(Qt::ArrowCursor);
 
     // Сначала задаем общую видимость вкладок
@@ -56,10 +59,16 @@ void WorkspaceController::updateTransformBoxScale() {
     if (m_transform_box && m_view) {
         m_transform_box->setViewScale(m_view->transform().m11());
     }
+    m_context_pannel->setMode(m_selected_figure != nullptr, m_selected_text != nullptr,
+                              m_current_tool == InstrumentType::FIGURE, m_current_tool == InstrumentType::TEXT,
+                              getToolName(m_current_tool));
 }
 
 void WorkspaceController::clearTransformBox() {
-    if (m_transform_box) { m_transform_box->setParentItem(nullptr); if (m_view->scene()) m_view->scene()->removeItem(m_transform_box); delete m_transform_box; m_transform_box = nullptr; }
+    if (m_transform_box) {
+        delete m_transform_box;
+        m_transform_box = nullptr;
+    }
 }
 
 bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
@@ -124,10 +133,44 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                         m_view->scene()->clearSelection();
                         Figure* fig = new Figure();
                         m_clipboard_state.pos = m_last_mouse_scene_pos;
+
+            // Копирование
+            if (kEvent->key() == Qt::Key_C) {
+                if (m_selected_figure) { m_clipboard_state = m_selected_figure->getState(); m_has_clipboard = true; m_clipboard_is_text = false; return true; }
+                if (m_selected_text) { m_clipboard_text_state = m_selected_text->getState(); m_has_clipboard = true; m_clipboard_is_text = true; return true; }
+            }
+            // Вырезка
+            if (kEvent->key() == Qt::Key_X) {
+                if (m_selected_figure) {
+                    m_clipboard_state = m_selected_figure->getState(); m_has_clipboard = true; m_clipboard_is_text = false;
+                    m_undo_stack->push(new DeleteObjectCommand(m_selected_figure->parentItem(), m_selected_figure));
+                    return true;
+                }
+                if (m_selected_text) {
+                    m_clipboard_text_state = m_selected_text->getState(); m_has_clipboard = true; m_clipboard_is_text = true;
+                    m_undo_stack->push(new DeleteObjectCommand(m_selected_text->parentItem(), m_selected_text));
+                    return true;
+                }
+            }
+            // Вставка
+            if (kEvent->key() == Qt::Key_V && m_has_clipboard && canvas) {
+                int activeId = canvas->getSelectedLayerid();
+                if (activeId >= 0 && !canvas->getLayersInfo()[activeId].locked) {
+                    m_view->scene()->clearSelection();
+                    if (!m_clipboard_is_text) {
+                        Figure* fig = new Figure();
+                        m_clipboard_state.pos += QPointF(20, 20);
                         fig->setState(m_clipboard_state);
                         canvas->addObjectToSelectedLayer(fig);
                         m_undo_stack->push(new AddObjectCommand(fig->parentItem(), fig));
                         fig->setSelected(true);
+                    } else {
+                        TextObject* txt = new TextObject();
+                        m_clipboard_text_state.pos += QPointF(20, 20);
+                        txt->setState(m_clipboard_text_state);
+                        canvas->addObjectToSelectedLayer(txt);
+                        m_undo_stack->push(new AddObjectCommand(txt->parentItem(), txt));
+                        txt->setSelected(true);
                     }
                 }
                 return true;
@@ -253,6 +296,20 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                 QRectF nRect = QRectF(m_draw_start_pos, cPos).normalized();
                 m_temp_figure->setPos(nRect.center());
                 m_temp_figure->setLocalRect(QRectF(-nRect.width()/2.0, -nRect.height()/2.0, nRect.width(), nRect.height()));
+        if (event->type() == QEvent::MouseButtonDblClick && m_current_tool == InstrumentType::POINTER) {
+            QMouseEvent *mEvent = static_cast<QMouseEvent *>(event);
+            QGraphicsItem* item = m_view->itemAt(mEvent->pos());
+            TextObject* txt = dynamic_cast<TextObject*>(item);
+            if (!txt && item && item->parentItem()) txt = dynamic_cast<TextObject*>(item->parentItem());
+
+            if (txt) {
+                bool ok;
+                QString newText = QInputDialog::getMultiLineText(m_view, "Edit Text", "Enter text:", txt->getState().text, &ok);
+                if (ok && !newText.isEmpty()) {
+                    TextState oldState = txt->getState();
+                    TextState newState = oldState; newState.text = newText;
+                    m_undo_stack->push(new ModifyTextCommand(txt, oldState, newState));
+                }
                 return true;
             }
         }
@@ -276,37 +333,101 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                 return true;
             }
 
+            if (mEvent->button() == Qt::LeftButton && m_current_tool == InstrumentType::TEXT && canvas) {
+                int activeId = canvas->getSelectedLayerid();
+                if (activeId >= 0 && !canvas->getLayersInfo()[activeId].locked) {
+                    m_is_drawing = true; m_draw_start_pos = m_view->mapToScene(mEvent->pos());
+                    m_view->scene()->clearSelection();
+                    m_temp_text = new TextObject();
+                    TextState defState;
+                    defState.pos = m_draw_start_pos; defState.rect = QRectF(0,0,0,0);
+                    // Берем дефолтный шрифт из панели
+                    defState.font = m_context_pannel->getUITextState(defState).font;
+                    defState.color = m_context_pannel->getActiveColor();
+                    m_temp_text->setState(defState);
+                    canvas->addObjectToSelectedLayer(m_temp_text);
+                }
+                return true;
+            }
             if (mEvent->button() == Qt::LeftButton && m_current_tool == InstrumentType::POINTER) {
                 QGraphicsItem* item = m_view->itemAt(mEvent->pos());
+
                 Figure* fig = dynamic_cast<Figure*>(item);
-                if (!fig && item && item->parentItem()) {
-                    fig = dynamic_cast<Figure*>(item->parentItem());
-                }
-                if (fig) {
-                    m_drag_target = fig;
-                    m_drag_start_state = fig->getState();
-                } else {
-                    m_drag_target = nullptr;
-                }
+                if (!fig && item && item->parentItem()) fig = dynamic_cast<Figure*>(item->parentItem());
+                if (fig) { m_drag_target = fig; m_drag_start_state = fig->getState(); }
+                else { m_drag_target = nullptr; }
+
+                TextObject* txt = dynamic_cast<TextObject*>(item);
+                if (!txt && item && item->parentItem()) txt = dynamic_cast<TextObject*>(item->parentItem());
+                if (txt) { m_drag_target_text = txt; m_drag_start_text_state = txt->getState(); }
+                else { m_drag_target_text = nullptr; }
+            }
+        }
+
+        if (event->type() == QEvent::MouseMove) {
+            QMouseEvent *mEvent = static_cast<QMouseEvent *>(event);
+            if (m_is_panning) {
+                QPoint delta = mEvent->pos() - m_last_pan_pos;
+                m_view->horizontalScrollBar()->setValue(m_view->horizontalScrollBar()->value() - delta.x());
+                m_view->verticalScrollBar()->setValue(m_view->verticalScrollBar()->value() - delta.y());
+                m_last_pan_pos = mEvent->pos(); return true;
+            }
+            if (m_is_drawing && m_temp_figure) {
+                QPointF cPos = m_view->mapToScene(mEvent->pos());
+                QRectF nRect = QRectF(m_draw_start_pos, cPos).normalized();
+                m_temp_figure->setPos(nRect.center());
+                m_temp_figure->setLocalRect(QRectF(-nRect.width()/2.0, -nRect.height()/2.0, nRect.width(), nRect.height()));
+                return true;
+            }
+            if (m_is_drawing && m_temp_text) {
+                QPointF cPos = m_view->mapToScene(mEvent->pos());
+                QRectF nRect = QRectF(m_draw_start_pos, cPos).normalized();
+                m_temp_text->setPos(nRect.center());
+                m_temp_text->setLocalRect(QRectF(-nRect.width()/2.0, -nRect.height()/2.0, nRect.width(), nRect.height()));
+                return true;
             }
         }
 
         if (event->type() == QEvent::MouseButtonRelease) {
             QMouseEvent *mEvent = static_cast<QMouseEvent *>(event);
             if (m_is_panning) { m_is_panning = false; setCurrentTool(m_current_tool); return true; }
+
             if (m_is_drawing && mEvent->button() == Qt::LeftButton) {
                 m_is_drawing = false;
                 if (m_temp_figure) {
                     QRectF r = m_temp_figure->getLocalRect();
                     if (r.width() < 3.0 || r.height() < 3.0) {
-                        m_temp_figure->setParentItem(nullptr); if (m_temp_figure->scene()) m_temp_figure->scene()->removeItem(m_temp_figure); delete m_temp_figure;
-                    } else { m_undo_stack->push(new AddObjectCommand(m_temp_figure->parentItem(), m_temp_figure)); m_temp_figure->setSelected(true); }
+                        delete m_temp_figure;
+                    } else {
+                        m_undo_stack->push(new AddObjectCommand(m_temp_figure->parentItem(), m_temp_figure));
+                        m_temp_figure->setSelected(true);
+                    }
                     m_temp_figure = nullptr;
+                }
+                if (m_temp_text) {
+                    QRectF r = m_temp_text->getLocalRect();
+                    if (r.width() < 15.0 || r.height() < 10.0) {
+                        delete m_temp_text; // Слишком маленькое окно, отмена
+                    } else {
+                        bool ok;
+                        QString newText = QInputDialog::getMultiLineText(m_view, "New Text", "Enter text:", "Text", &ok);
+                        if (ok && !newText.isEmpty()) {
+                            TextState s = m_temp_text->getState();
+                            s.text = newText;
+                            m_temp_text->setState(s);
+                            m_undo_stack->push(new AddObjectCommand(m_temp_text->parentItem(), m_temp_text));
+                            m_temp_text->setSelected(true);
+                        } else {
+                            delete m_temp_text; // Пользователь нажал Cancel
+                        }
+                    }
+                    m_temp_text = nullptr;
                 }
                 return true;
             }
 
             if (mEvent->button() == Qt::LeftButton && m_current_tool == InstrumentType::POINTER) {
+                bool handledByTransformBox = (m_transform_box && m_transform_box->isInteracting());
                 if (m_drag_target) {
                     FigureState newState = m_drag_target->getState();
                     bool handledByTransformBox = (m_transform_box && m_transform_box->isInteracting());
@@ -319,6 +440,19 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                         }
                     }
                     m_drag_target = nullptr;
+                    if (!handledByTransformBox && newState != m_drag_start_state) {
+                        m_undo_stack->push(new ModifyFigureCommand(m_drag_target, m_drag_start_state, newState));
+                        if (m_drag_target == m_selected_figure) m_context_pannel->setTarget(m_selected_figure);
+                    }
+                    m_drag_target = nullptr;
+                }
+                if (m_drag_target_text) {
+                    TextState newState = m_drag_target_text->getState();
+                    if (!handledByTransformBox && newState != m_drag_start_text_state) {
+                        m_undo_stack->push(new ModifyTextCommand(m_drag_target_text, m_drag_start_text_state, newState));
+                        if (m_drag_target_text == m_selected_text) m_context_pannel->setTarget(m_selected_text);
+                    }
+                    m_drag_target_text = nullptr;
                 }
             }
         }
@@ -350,6 +484,7 @@ void WorkspaceController::onSelectionChanged() {
 
         // Сначала устанавливаем Mode (он откроет Style по умолчанию для выбранного)
         m_context_pannel->setMode(m_selected_figure != nullptr, m_current_tool == InstrumentType::FIGURE, getToolName(m_current_tool));
+        m_selected_text = dynamic_cast<TextObject*>(obj);
 
         if (m_selected_figure) {
             m_transform_box = new TransformBox(item, m_undo_stack);
@@ -357,36 +492,57 @@ void WorkspaceController::onSelectionChanged() {
             // Затем Target (он переопределит Style и скроет его, если это Image)
             m_context_pannel->setTarget(m_selected_figure);
             m_palette_pannel->setColor(m_context_pannel->getActiveColor());
+        } else if (m_selected_text) {
+            m_transform_box = new TransformBox(item, m_undo_stack);
+            m_context_pannel->setTarget(m_selected_text);
         }
+        if (m_selected_figure || m_selected_text)
+            m_palette_pannel->setColor(m_context_pannel->getActiveColor());
     } else {
         m_selected_figure = nullptr;
         m_context_pannel->setMode(false, m_current_tool == InstrumentType::FIGURE, getToolName(m_current_tool));
         m_context_pannel->setTarget(nullptr);
     }
+        m_selected_text = nullptr;
+        m_context_pannel->setMode(false, false, false, false, "");
+    }
+
+    m_context_pannel->setMode(m_selected_figure != nullptr, m_selected_text != nullptr,
+                              m_current_tool == InstrumentType::FIGURE, m_current_tool == InstrumentType::TEXT,
+                              getToolName(m_current_tool));
 }
 
 void WorkspaceController::onMoveObjectLayerRequested(int shift) {
-    if (!m_selected_figure) return;
+    Object* target = m_selected_figure ? (Object*)m_selected_figure : (Object*)m_selected_text;
+    if (!target) return;
     Canvas* canvas = m_project_manager->GetCurrentCanvas();
     if (!canvas) return;
 
-    int oldLayerId = canvas->getLayerIdOfObject(m_selected_figure);
+    int oldLayerId = canvas->getLayerIdOfObject(target);
     int newLayerId = oldLayerId + shift;
     std::vector<LayerInfo> infos = canvas->getLayersInfo();
 
     if (newLayerId >= 0 && newLayerId < (int)infos.size() && !infos[newLayerId].locked) {
-        m_undo_stack->push(new MoveObjectLayerCommand(canvas, m_selected_figure, oldLayerId, newLayerId));
+        m_undo_stack->push(new MoveObjectLayerCommand(canvas, target, oldLayerId, newLayerId));
         m_layers_pannel->selectLayerFromOutside(newLayerId);
     }
 }
 
 void WorkspaceController::onContextPropertyChanged() {
-    if (!m_selected_figure) return;
-    FigureState oldState = m_selected_figure->getState();
-    FigureState newState = m_context_pannel->getUIState(oldState);
-    if (oldState != newState) {
-        m_undo_stack->push(new ModifyFigureCommand(m_selected_figure, oldState, newState));
-        m_context_pannel->setTarget(m_selected_figure);
+    if (m_selected_figure) {
+        FigureState oldState = m_selected_figure->getState();
+        FigureState newState = m_context_pannel->getUIState(oldState);
+        if (oldState != newState) {
+            m_undo_stack->push(new ModifyFigureCommand(m_selected_figure, oldState, newState));
+            m_context_pannel->setTarget(m_selected_figure);
+        }
+    } else if (m_selected_text) {
+        TextState oldState = m_selected_text->getState();
+        TextState newState = m_context_pannel->getUITextState(oldState);
+        if (oldState != newState) {
+            m_undo_stack->push(new ModifyTextCommand(m_selected_text, oldState, newState));
+            m_context_pannel->setTarget(m_selected_text);
+        }
     }
 }
 
@@ -418,8 +574,25 @@ void WorkspaceController::onColorPickedCommit(const QColor& color) {
         m_undo_stack->push(new ModifyFigureCommand(m_selected_figure, m_state_before_preview, newState));
         m_is_previewing = false;
     } else {
-        FigureState oldState = m_selected_figure->getState();
-        m_undo_stack->push(new ModifyFigureCommand(m_selected_figure, oldState, newState));
+        m_context_pannel->setDefaultColor(m_color_target_is_fill, color);
     }
-    m_context_pannel->setTarget(m_selected_figure);
+}
+
+void WorkspaceController::clearState() {
+    clearTransformBox();
+    m_view->scene()->clearSelection();
+
+    if (m_undo_stack) m_undo_stack->clear();
+
+    m_selected_figure = nullptr;
+    m_temp_figure = nullptr;
+    m_drag_target = nullptr;
+
+    m_selected_text = nullptr;
+    m_temp_text = nullptr;
+    m_drag_target_text = nullptr;
+
+    m_has_clipboard = false;
+    m_is_drawing = false;
+    m_is_panning = false;
 }

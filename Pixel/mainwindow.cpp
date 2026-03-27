@@ -96,10 +96,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
     connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
 
+    connect(m_project_manager, &ProjectManager::projectAboutToClose, m_workspace_controller, &WorkspaceController::clearState);
+
     connect(m_project_manager, &ProjectManager::projectLoaded, this, [this](){
-        if(m_workspace_controller && m_workspace_controller->getUndoStack()) {
-            m_workspace_controller->getUndoStack()->clear();
-        }
         updateInfoPanel();
     });
 
@@ -203,14 +202,12 @@ void MainWindow::updateInfoPanel()
 }
 
 MainWindow::~MainWindow() {
-    if (m_workspace_controller && m_workspace_controller->getUndoStack()) {
-        m_workspace_controller->getUndoStack()->clear();
+    if (m_workspace_controller) {
+        m_workspace_controller->clearState();
     }
-
     if (m_project_manager && m_project_manager->GetCurrentCanvas()) {
         m_project_manager->GetCurrentCanvas()->clearCanvas();
     }
-
     delete ui;
 }
 
@@ -223,6 +220,7 @@ void MainWindow::onFitToScreen() {
     QRectF canvasRect(0, 0, canvas->getSize().width(), canvas->getSize().height());
     m_view_main->fitInView(canvasRect, Qt::KeepAspectRatio);
     m_view_main->scale(0.95, 0.95);
+    m_view_main->centerOn(canvasRect.center());
     updateInfoPanel();
 }
 void MainWindow::onSetAbsoluteZoom(float scale) {

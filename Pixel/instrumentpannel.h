@@ -16,6 +16,7 @@ enum class InstrumentType
     SCISSORS,
     FILL,
     HAND,
+    TEXT,
     FIGURE,
 };
 

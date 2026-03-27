@@ -93,3 +93,37 @@ void Figure::setState(const FigureState& state)
     setRotation(state.rot);
     update();
 }
+
+TextObject::TextObject(const QRectF& rect, QGraphicsItem* parent) : Object(parent) {
+    m_state.rect = rect;
+    m_state.text = "Text";
+    m_state.font = QFont("Arial", 16);
+    m_state.color = Qt::black;
+    m_state.pos = QPointF(0, 0);
+    m_state.rot = 0.0;
+}
+
+TextObject::TextObject(QGraphicsItem* parent) : TextObject(QRectF(0,0,100,50), parent) {}
+
+void TextObject::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+    painter->save();
+    painter->setRenderHint(QPainter::TextAntialiasing);
+    painter->setFont(m_state.font);
+    painter->setPen(m_state.color);
+    // Рисуем текст внутри прямоугольника с переносом слов
+    painter->drawText(m_state.rect, Qt::TextWordWrap | Qt::AlignLeft | Qt::AlignTop, m_state.text);
+    painter->restore();
+}
+
+QRectF TextObject::boundingRect() const { return m_state.rect; }
+QPainterPath TextObject::shape() const { QPainterPath p; p.addRect(m_state.rect); return p; }
+void TextObject::setLocalRect(const QRectF& rect) { prepareGeometryChange(); m_state.rect = rect; update(); }
+QRectF TextObject::getLocalRect() const { return m_state.rect; }
+
+TextState TextObject::getState() const {
+    TextState s = m_state; s.pos = pos(); s.rot = rotation(); return s;
+}
+
+void TextObject::setState(const TextState& state) {
+    prepareGeometryChange(); m_state = state; setPos(state.pos); setRotation(state.rot); update();
+}

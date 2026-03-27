@@ -52,4 +52,15 @@ private:
     int m_new_id;
 };
 
+class ModifyTextCommand : public QUndoCommand {
+public:
+    ModifyTextCommand(TextObject* textObj, const TextState& oldState, const TextState& newState, QUndoCommand *parent = nullptr);
+    void undo() override;
+    void redo() override;
+private:
+    TextObject* m_text;
+    TextState m_old_state;
+    TextState m_new_state;
+};
+
 #endif // ACTION_H

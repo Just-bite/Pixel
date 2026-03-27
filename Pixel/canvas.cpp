@@ -14,10 +14,11 @@ void Canvas::addLayer(Layer* layer) {
     if (!layer)
         return;
     m_layers.push_back(layer);
-    if (m_parent_sceene)
-        m_parent_sceene->addItem(layer);
-    if (!m_selected)
-        selectLayer(0);
+    if (m_layer_counter < (int)m_layers.size()) {
+        m_layer_counter = m_layers.size();
+    }
+    if (m_parent_sceene) m_parent_sceene->addItem(layer);
+    if (!m_selected) selectLayer(0);
     renderCanvas();
 }
 
