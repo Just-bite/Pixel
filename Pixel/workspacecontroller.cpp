@@ -39,7 +39,10 @@ void WorkspaceController::setCurrentTool(InstrumentType type) {
 }
 
 void WorkspaceController::clearTransformBox() {
-    if (m_transform_box) { m_transform_box->setParentItem(nullptr); if (m_view->scene()) m_view->scene()->removeItem(m_transform_box); delete m_transform_box; m_transform_box = nullptr; }
+    if (m_transform_box) {
+        delete m_transform_box;
+        m_transform_box = nullptr;
+    }
 }
 
 bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
@@ -160,8 +163,11 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                 if (m_temp_figure) {
                     QRectF r = m_temp_figure->getLocalRect();
                     if (r.width() < 3.0 || r.height() < 3.0) {
-                        m_temp_figure->setParentItem(nullptr); if (m_temp_figure->scene()) m_temp_figure->scene()->removeItem(m_temp_figure); delete m_temp_figure;
-                    } else { m_undo_stack->push(new AddObjectCommand(m_temp_figure->parentItem(), m_temp_figure)); m_temp_figure->setSelected(true); }
+                        delete m_temp_figure;
+                    } else {
+                        m_undo_stack->push(new AddObjectCommand(m_temp_figure->parentItem(), m_temp_figure));
+                        m_temp_figure->setSelected(true);
+                    }
                     m_temp_figure = nullptr;
                 }
                 return true;
@@ -313,4 +319,18 @@ void WorkspaceController::onColorPickedCommit(const QColor& color) {
         m_undo_stack->push(new ModifyFigureCommand(m_selected_figure, oldState, newState));
     }
     m_context_pannel->setTarget(m_selected_figure);
+}
+
+void WorkspaceController::clearState() {
+    clearTransformBox();
+    m_view->scene()->clearSelection();
+
+    if (m_undo_stack) m_undo_stack->clear();
+
+    m_selected_figure = nullptr;
+    m_temp_figure = nullptr;
+    m_drag_target = nullptr;
+    m_has_clipboard = false;
+    m_is_drawing = false;
+    m_is_panning = false;
 }

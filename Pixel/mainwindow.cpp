@@ -16,7 +16,6 @@ MainWindow::MainWindow(QWidget *parent)
     QVBoxLayout *container_layout = new QVBoxLayout(container_main);
     container_layout->setContentsMargins(0, 0, 0, 0);
 
-    // ИСПРАВЛЕНИЕ: Убрали лишний пустой QWidget-обертку. Сразу создаем панель на container_main.
     m_context_pannel_layout = new ContextPannel(container_main);
 
     QWidget *workspace = new QWidget(container_main);
@@ -98,20 +97,17 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
     connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
 
-    // ВОТ СЮДА ПЕРЕНЕСИ CONNECT ДЛЯ МЕНЕДЖЕРА:
+    connect(m_project_manager, &ProjectManager::projectAboutToClose, m_workspace_controller, &WorkspaceController::clearState);
+
     connect(m_project_manager, &ProjectManager::projectLoaded, this, [this](){
-        if(m_workspace_controller && m_workspace_controller->getUndoStack()) {
-            m_workspace_controller->getUndoStack()->clear();
-        }
         updateInfoPanel();
     });
 
-    // m_layers_pannel уже гарантированно существует!
     connect(m_project_manager, &ProjectManager::layersUpdated, m_layers_pannel, &LayersPannel::updateLayers);
 
     createMenuBar();
     QTimer::singleShot(0, this, &MainWindow::onFitToScreen);
-} // Конец конструктора MainWindow
+}
 
 
 void MainWindow::createMenuBar()
@@ -204,16 +200,12 @@ void MainWindow::updateInfoPanel()
 }
 
 MainWindow::~MainWindow() {
-    // Шаг 1: Очищаем историю, чтобы уничтожились висящие в памяти удаленные объекты
-    if (m_workspace_controller && m_workspace_controller->getUndoStack()) {
-        m_workspace_controller->getUndoStack()->clear();
+    if (m_workspace_controller) {
+        m_workspace_controller->clearState();
     }
-
-    // Шаг 2: Мягко удаляем слои и фигуры через наш Canvas, обходя баги QGraphicsScene::clear()
     if (m_project_manager && m_project_manager->GetCurrentCanvas()) {
         m_project_manager->GetCurrentCanvas()->clearCanvas();
     }
-
     delete ui;
 }
 

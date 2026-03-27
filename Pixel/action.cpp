@@ -1,27 +1,47 @@
 #include "action.h"
 
-AddObjectCommand::AddObjectCommand(QGraphicsItem* pLayer, QGraphicsItem* obj, QUndoCommand *p) : QUndoCommand(p), m_parent_layer(pLayer), m_object(obj) { setText("Add Figure"); }
+AddObjectCommand::AddObjectCommand(QGraphicsItem* pLayer, QGraphicsItem* obj, QUndoCommand *p)
+    : QUndoCommand(p), m_parent_layer(pLayer), m_object(obj) { setText("Add Figure"); }
+
 AddObjectCommand::~AddObjectCommand() {
-    if (!m_object->scene() && !m_object->parentItem()) delete m_object;
+    if (m_object && !m_object->scene() && !m_object->parentItem()) {
+        delete m_object;
+    }
 }
+
 void AddObjectCommand::undo() {
+    if (!m_object) return;
+    if (m_object->scene()) {
+        m_object->scene()->removeItem(m_object);
+    }
     m_object->setParentItem(nullptr);
-    if (QGraphicsScene* s = m_object->scene()) s->removeItem(m_object);
 }
+
 void AddObjectCommand::redo() {
+    if (!m_object) return;
     m_object->setParentItem(m_parent_layer);
 }
 
-DeleteObjectCommand::DeleteObjectCommand(QGraphicsItem* pLayer, QGraphicsItem* obj, QUndoCommand *p) : QUndoCommand(p), m_parent_layer(pLayer), m_object(obj) { setText("Delete Figure"); }
+DeleteObjectCommand::DeleteObjectCommand(QGraphicsItem* pLayer, QGraphicsItem* obj, QUndoCommand *p)
+    : QUndoCommand(p), m_parent_layer(pLayer), m_object(obj) { setText("Delete Figure"); }
+
 DeleteObjectCommand::~DeleteObjectCommand() {
-    if (!m_object->scene() && !m_object->parentItem()) delete m_object;
+    if (m_object && !m_object->scene() && !m_object->parentItem()) {
+        delete m_object;
+    }
 }
+
 void DeleteObjectCommand::undo() {
+    if (!m_object) return;
     m_object->setParentItem(m_parent_layer);
 }
+
 void DeleteObjectCommand::redo() {
+    if (!m_object) return;
+    if (m_object->scene()) {
+        m_object->scene()->removeItem(m_object);
+    }
     m_object->setParentItem(nullptr);
-    if (QGraphicsScene* s = m_object->scene()) s->removeItem(m_object);
 }
 
 ModifyFigureCommand::ModifyFigureCommand(Figure* fig, const FigureState& oState, const FigureState& nState, QUndoCommand *p) : QUndoCommand(p), m_figure(fig), m_old_state(oState), m_new_state(nState) { setText("Modify Figure"); }

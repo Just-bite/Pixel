@@ -30,6 +30,7 @@ public slots:
     void onColorPickedPreview(const QColor& color);
     void onColorPickedCommit(const QColor& color);
     void onMoveObjectLayerRequested(int shift);
+    void clearState();
 
 signals:
     void viewportChanged();

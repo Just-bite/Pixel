@@ -118,14 +118,15 @@ void ProjectManager::loadFromJson(const QString& path) {
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     if (!doc.isObject()) return;
 
-    canvas->clearCanvas(); // Очищаем старый холст
+    emit projectAboutToClose();
+    canvas->clearCanvas();
 
     QJsonArray layersArr = doc.object()["layers"].toArray();
     for (int i = 0; i < layersArr.size(); ++i) {
         QJsonObject lObj = layersArr[i].toObject();
         Layer* l = new Layer(lObj["name"].toString());
         l->setVisible(lObj["visible"].toBool(true));
-        canvas->addLayer(l); // Важно добавить до блокировки
+        canvas->addLayer(l);
 
         QJsonArray objsArr = lObj["objects"].toArray();
         for (int j = 0; j < objsArr.size(); ++j) {
@@ -142,7 +143,6 @@ void ProjectManager::loadFromJson(const QString& path) {
             f->setState(s);
             l->addObject(f);
         }
-        // Блокируем после добавления объектов, чтобы они подхватили флаг
         l->setLocked(lObj["locked"].toBool(false));
     }
 
@@ -172,9 +172,10 @@ bool ProjectManager::createFile() {
     if (dlg.exec() == QDialog::Accepted) {
         Canvas* canvas = GetCurrentCanvas();
         if (canvas) {
+            emit projectAboutToClose();
             canvas->clearCanvas();
             canvas->setSize(wBox->value(), hBox->value());
-            canvas->newLayer(); // Создаем один пустой слой по умолчанию
+            canvas->newLayer();
             m_current_file_path = "";
             emit projectLoaded();
             emit layersUpdated();
