@@ -83,9 +83,10 @@ void ProjectManager::saveToJson(const QString& path) {
 
         QJsonArray objsArr;
         for (Object* o : l->getObjects()) {
+            QJsonObject sObj;
             if (Figure* f = dynamic_cast<Figure*>(o)) {
+                sObj["class"] = "figure";
                 FigureState s = f->getState();
-                QJsonObject sObj;
                 sObj["type"] = static_cast<int>(s.type);
                 sObj["px"] = s.pos.x(); sObj["py"] = s.pos.y();
                 sObj["x"] = s.rect.x(); sObj["y"] = s.rect.y();
@@ -93,8 +94,18 @@ void ProjectManager::saveToJson(const QString& path) {
                 sObj["rot"] = s.rot; sObj["thick"] = s.thickness;
                 sObj["fill"] = s.fill.name(QColor::HexArgb);
                 sObj["stroke"] = s.stroke.name(QColor::HexArgb);
-                objsArr.append(sObj);
+            } else if (TextObject* t = dynamic_cast<TextObject*>(o)) {
+                sObj["class"] = "text";
+                TextState s = t->getState();
+                sObj["text"] = s.text;
+                sObj["font"] = s.font.toString();
+                sObj["color"] = s.color.name(QColor::HexArgb);
+                sObj["px"] = s.pos.x(); sObj["py"] = s.pos.y();
+                sObj["x"] = s.rect.x(); sObj["y"] = s.rect.y();
+                sObj["w"] = s.rect.width(); sObj["h"] = s.rect.height();
+                sObj["rot"] = s.rot;
             }
+            objsArr.append(sObj);
         }
         lObj["objects"] = objsArr;
         layersArr.append(lObj);
@@ -131,17 +142,31 @@ void ProjectManager::loadFromJson(const QString& path) {
         QJsonArray objsArr = lObj["objects"].toArray();
         for (int j = 0; j < objsArr.size(); ++j) {
             QJsonObject sObj = objsArr[j].toObject();
-            Figure* f = new Figure();
-            FigureState s;
-            s.type = static_cast<FigureType>(sObj["type"].toInt());
-            s.pos = QPointF(sObj["px"].toDouble(), sObj["py"].toDouble());
-            s.rect = QRectF(sObj["x"].toDouble(), sObj["y"].toDouble(), sObj["w"].toDouble(), sObj["h"].toDouble());
-            s.rot = sObj["rot"].toDouble();
-            s.thickness = sObj["thick"].toDouble();
-            s.fill = QColor(sObj["fill"].toString());
-            s.stroke = QColor(sObj["stroke"].toString());
-            f->setState(s);
-            l->addObject(f);
+            QString cls = sObj["class"].toString("figure");
+            if (cls == "figure") {
+                Figure* f = new Figure();
+                FigureState s;
+                s.type = static_cast<FigureType>(sObj["type"].toInt());
+                s.pos = QPointF(sObj["px"].toDouble(), sObj["py"].toDouble());
+                s.rect = QRectF(sObj["x"].toDouble(), sObj["y"].toDouble(), sObj["w"].toDouble(), sObj["h"].toDouble());
+                s.rot = sObj["rot"].toDouble();
+                s.thickness = sObj["thick"].toDouble();
+                s.fill = QColor(sObj["fill"].toString());
+                s.stroke = QColor(sObj["stroke"].toString());
+                f->setState(s);
+                l->addObject(f);
+            } else if (cls == "text") {
+                TextObject* t = new TextObject();
+                TextState s;
+                s.text = sObj["text"].toString();
+                s.font.fromString(sObj["font"].toString());
+                s.color = QColor(sObj["color"].toString());
+                s.pos = QPointF(sObj["px"].toDouble(), sObj["py"].toDouble());
+                s.rect = QRectF(sObj["x"].toDouble(), sObj["y"].toDouble(), sObj["w"].toDouble(), sObj["h"].toDouble());
+                s.rot = sObj["rot"].toDouble();
+                t->setState(s);
+                l->addObject(t);
+            }
         }
         l->setLocked(lObj["locked"].toBool(false));
     }

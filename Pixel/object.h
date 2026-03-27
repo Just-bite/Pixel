@@ -68,4 +68,41 @@ private:
     FigureState m_state;
 };
 
+#include <QFont>
+
+struct TextState {
+    QString text;
+    QFont font;
+    QColor color;
+    QPointF pos;
+    qreal rot;
+    QRectF rect;
+
+    bool operator==(const TextState& o) const {
+        return text == o.text && font == o.font && color == o.color && pos == o.pos && rot == o.rot && rect == o.rect;
+    }
+    bool operator!=(const TextState& o) const { return !(*this == o); }
+};
+
+class TextObject : public Object
+{
+    Q_OBJECT
+public:
+    explicit TextObject(const QRectF& rect, QGraphicsItem* parent = nullptr);
+    explicit TextObject(QGraphicsItem* parent = nullptr);
+
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+    QRectF boundingRect() const override;
+    QPainterPath shape() const override;
+
+    void setLocalRect(const QRectF& rect) override;
+    QRectF getLocalRect() const override;
+
+    TextState getState() const;
+    void setState(const TextState& state);
+
+private:
+    TextState m_state;
+};
+
 #endif // OBJECT_H

@@ -10,16 +10,20 @@
 #include <QLabel>
 #include <QGroupBox>
 #include "object.h"
+#include <QFontComboBox>
 
 class ContextPannel : public QWidget {
     Q_OBJECT
 public:
     explicit ContextPannel(QWidget* parent = nullptr);
 
-    void setMode(bool isFigureSelected, bool isFigureTool, const QString& toolName = "");
+    void setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, const QString& toolName = "");
     void setTarget(Figure* figure);
+    void setTarget(TextObject* textObj);
 
     FigureState getUIState(const FigureState& baseState) const;
+    TextState getUITextState(const TextState& baseState) const;
+
     FigureState getDefaultState() const { return m_default_state; }
     void setDefaultColor(bool isFill, const QColor& color);
 
@@ -54,6 +58,13 @@ private:
     Figure* m_current_target = nullptr;
     FigureState m_default_state;
     bool m_active_is_fill = true;
+
+    QGroupBox *m_text_group;
+    QFontComboBox* m_font_box;
+    QDoubleSpinBox* m_font_size_box;
+
+    TextObject* m_current_text_target = nullptr;
+    TextState m_default_text_state;
 };
 
 #endif // CONTEXTPANNEL_H
