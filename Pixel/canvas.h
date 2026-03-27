@@ -35,7 +35,7 @@ public:
     void setLayerLocked(int id, bool locked);
 
     void addObjectToSelectedLayer(Object* obj);
-    void moveObjectToLayer(Object* obj, int new_layer_id); // Для контекстного меню
+    void moveObjectToLayer(Object* obj, int new_layer_id);
     int getLayerIdOfObject(Object* obj) const;
 
     std::vector<LayerInfo> getLayersInfo() const;

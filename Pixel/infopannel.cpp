@@ -5,7 +5,6 @@ InfoPannel::InfoPannel(std::pair<int, int> canvas_size, float scale, QWidget* pa
     , m_canvas_size(canvas_size)
     , m_scale(scale)
 {
-    // Строго parent! Иначе панель останется пустой и схлопнется
     m_info_pannel_layout = new QHBoxLayout(parent);
     m_info_pannel_layout->setSpacing(5);
     m_info_pannel_layout->setContentsMargins(5, 0, 5, 0);
@@ -28,7 +27,6 @@ InfoPannel::InfoPannel(std::pair<int, int> canvas_size, float scale, QWidget* pa
     m_info_pannel_layout->addWidget(m_btn_increase);
     m_info_pannel_layout->addWidget(m_btn_fit);
 
-    // Связываем UI с сигналами (здесь this, так как сигналы по-прежнему принадлежат InfoPannel)
     connect(m_btn_increase, &QPushButton::clicked, this, &InfoPannel::zoomInRequested);
     connect(m_btn_decrease, &QPushButton::clicked, this, &InfoPannel::zoomOutRequested);
     connect(m_btn_fit, &QPushButton::clicked, this, &InfoPannel::fitRequested);

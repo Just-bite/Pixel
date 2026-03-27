@@ -29,7 +29,6 @@ public:
     {
         QRectF rect(arg.first.x() - 20, arg.first.y() - 20, 40, 40);
 
-        // ИСПРАВЛЕНИЕ: Создаем Figure вместо Ellipse
         Figure* fig = new Figure(rect, FigureType::Ellipse);
 
         FigureState s = fig->getState();

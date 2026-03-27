@@ -2,28 +2,24 @@
 
 InstrumentPannel::InstrumentPannel(QWidget* parent)
     : QWidget(parent)
-    // ВОЗВРАЩАЕМ PARENT: строим интерфейс на виджете, который передал MainWindow
     , m_instrument_pannel_layout(new QVBoxLayout(parent))
     , m_button_group(new QButtonGroup(parent))
 {
     m_instrument_pannel_layout->setContentsMargins(2,2,2,2);
     m_instrument_pannel_layout->setSpacing(2);
 
-    // Включаем эксклюзивный режим (только 1 кнопка может быть нажата)
     m_button_group->setExclusive(true);
 
     fillInstumentIcon();
     m_bttns_instruments.clear();
-    createButtonsArray(parent); // Передаем parent внутрь
+    createButtonsArray(parent);
     setButtonsIcons();
     addInsruments();
 
-    // Связываем клик по кнопке с отправкой сигнала
     connect(m_button_group, static_cast<void (QButtonGroup::*)(int)>(&QButtonGroup::buttonClicked), this, [this](int id){
         emit instrumentSelected(static_cast<InstrumentType>(id));
     });
 
-    // Включаем Pointer по умолчанию
     if (QPushButton* ptrBtn = static_cast<QPushButton*>(m_button_group->button(static_cast<int>(InstrumentType::POINTER)))) {
         ptrBtn->setChecked(true);
     }
@@ -47,13 +43,12 @@ void InstrumentPannel::createButtonsArray(QWidget* parent)
 {
     for(size_t i = 0; i < MAX_INSTRUMENTS_AMOUNT; i++)
     {
-        // Кнопки тоже должны лежать на parent
         QPushButton* button = new QPushButton(parent);
         button->setFixedSize(INSTURMENT_BTN_SIZE, INSTURMENT_BTN_SIZE);
-        button->setCheckable(true); // Кнопку можно "зажать"
+        button->setCheckable(true);
 
         m_bttns_instruments.push_back(button);
-        m_button_group->addButton(button, i); // ID кнопки = номер в Enum
+        m_button_group->addButton(button, i);
     }
 }
 

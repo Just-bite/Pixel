@@ -10,6 +10,8 @@
 #include <QFormLayout>
 #include <QSpinBox>
 #include <QDialogButtonBox>
+#include <QBuffer>
+#include <QByteArray>
 
 ProjectManager::ProjectManager(QWidget* parent) : QWidget(parent), m_selected_project(nullptr) {}
 
@@ -54,14 +56,12 @@ bool ProjectManager::exportPng() {
     if (fileName.isEmpty()) return false;
     if (!fileName.endsWith(".png")) fileName += ".png";
 
-    // Создаем прозрачное изображение размером с холст
     QImage image(canvas->getSize(), QImage::Format_ARGB32);
     image.fill(Qt::transparent);
 
     QPainter painter(&image);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Рендерим сцену
     canvas->getScene()->render(&painter, QRectF(), QRectF(0, 0, canvas->getSize().width(), canvas->getSize().height()));
 
     return image.save(fileName);
@@ -94,6 +94,17 @@ void ProjectManager::saveToJson(const QString& path) {
                 sObj["rot"] = s.rot; sObj["thick"] = s.thickness;
                 sObj["fill"] = s.fill.name(QColor::HexArgb);
                 sObj["stroke"] = s.stroke.name(QColor::HexArgb);
+
+                // Сохранение картинки в Base64 формат PNG
+                if (s.type == FigureType::Image && !s.image.isNull()) {
+                    QByteArray byteArray;
+                    QBuffer buffer(&byteArray);
+                    buffer.open(QIODevice::WriteOnly);
+                    s.image.save(&buffer, "PNG");
+                    sObj["image"] = QString::fromLatin1(byteArray.toBase64());
+                }
+
+                objsArr.append(sObj);
             } else if (TextObject* t = dynamic_cast<TextObject*>(o)) {
                 sObj["class"] = "text";
                 TextState s = t->getState();
@@ -142,6 +153,24 @@ void ProjectManager::loadFromJson(const QString& path) {
         QJsonArray objsArr = lObj["objects"].toArray();
         for (int j = 0; j < objsArr.size(); ++j) {
             QJsonObject sObj = objsArr[j].toObject();
+            Figure* f = new Figure();
+            FigureState s;
+            s.type = static_cast<FigureType>(sObj["type"].toInt());
+            s.pos = QPointF(sObj["px"].toDouble(), sObj["py"].toDouble());
+            s.rect = QRectF(sObj["x"].toDouble(), sObj["y"].toDouble(), sObj["w"].toDouble(), sObj["h"].toDouble());
+            s.rot = sObj["rot"].toDouble();
+            s.thickness = sObj["thick"].toDouble();
+            s.fill = QColor(sObj["fill"].toString());
+            s.stroke = QColor(sObj["stroke"].toString());
+
+            // Восстановление картинки
+            if (s.type == FigureType::Image && sObj.contains("image")) {
+                QByteArray byteArray = QByteArray::fromBase64(sObj["image"].toString().toLatin1());
+                s.image.loadFromData(byteArray, "PNG");
+            }
+
+            f->setState(s);
+            l->addObject(f);
             QString cls = sObj["class"].toString("figure");
             if (cls == "figure") {
                 Figure* f = new Figure();

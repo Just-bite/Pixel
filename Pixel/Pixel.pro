@@ -19,7 +19,6 @@ SOURCES += \
     action.cpp \
     canvas.cpp \
     contextpannel.cpp \
-    filemanager.cpp \
     infopannel.cpp \
     instrumentpannel.cpp \
     layer.cpp \
@@ -38,7 +37,6 @@ HEADERS += \
     action.h \
     canvas.h \
     contextpannel.h \
-    filemanager.h \
     infopannel.h \
     layer.h \
     instrumentpannel.h \

@@ -16,9 +16,13 @@ void ColorPickerArea::setHue(int hue) {
 
 void ColorPickerArea::setCursorColor(const QColor& color) {
     m_hue = std::max(0, color.hsvHue());
-    m_sat = color.hsvSaturation();
-    m_val = color.value();
-    updateCursorPos();
+    int sat = color.hsvSaturation();
+    int val = color.value();
+
+    int x = (sat * (width() - 1)) / 255;
+    int y = ((255 - val) * (height() - 1)) / 255;
+
+    m_pos = QPoint(x, y);
     updateImage();
     update();
 }
@@ -108,7 +112,6 @@ void PalettePannel::setColor(const QColor& c) {
     m_hue_slider->setValue(std::max(0, c.hsvHue()));
     m_alpha_slider->setValue(c.alpha());
 
-    // Вызов нового метода, который переставляет кружок
     m_area->setCursorColor(c);
 
     QString hex = QString("#%1%2%3%4")
@@ -144,14 +147,13 @@ void PalettePannel::onAreaCommit(const QColor& c) {
 
 void PalettePannel::onSlidersChanged() {
     if (!m_syncing) {
-        m_syncing = true; // Блокируем обратный пересчет X/Y кружка!
+        m_syncing = true;
 
         m_area->setHue(m_hue_slider->value());
         QColor cur = m_area->currentColor();
         cur.setAlpha(m_alpha_slider->value());
         m_current_color = cur;
 
-        // Обновляем только текст HEX, НЕ трогая позицию кружка (m_area->setCursorColor)
         QString hex = QString("#%1%2%3%4")
                           .arg(cur.red(), 2, 16, QChar('0')).arg(cur.green(), 2, 16, QChar('0'))
                           .arg(cur.blue(), 2, 16, QChar('0')).arg(cur.alpha(), 2, 16, QChar('0')).toUpper();

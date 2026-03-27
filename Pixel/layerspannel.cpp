@@ -65,7 +65,7 @@ void LayerWidget::setSelected(bool selected) {
 }
 void LayerWidget::setVisibleState(bool visible) { m_eye_btn->blockSignals(true); m_eye_btn->setChecked(!visible); m_eye_btn->blockSignals(false); }
 void LayerWidget::setLockedState(bool locked) { m_lock_btn->blockSignals(true); m_lock_btn->setChecked(locked); m_lock_btn->blockSignals(false); }
-void LayerWidget::onVisibleToggled(bool checked) { emit visibleToggled(!checked); } // Checked = Hidden
+void LayerWidget::onVisibleToggled(bool checked) { emit visibleToggled(!checked); } 
 void LayerWidget::onLockedToggled(bool checked) { emit lockedToggled(checked); }
 void LayerWidget::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) emit layerClicked();
