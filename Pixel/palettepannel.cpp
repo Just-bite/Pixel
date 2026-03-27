@@ -5,6 +5,7 @@
 ColorPickerArea::ColorPickerArea(QWidget* parent) : QWidget(parent), m_pos(0,0) {
     setMinimumSize(150, 150);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    updateImage();
 }
 
 void ColorPickerArea::setHue(int hue) {
@@ -14,18 +15,18 @@ void ColorPickerArea::setHue(int hue) {
 }
 
 void ColorPickerArea::setCursorColor(const QColor& color) {
-    if (width() <= 0 || height() <= 0) return;
     m_hue = std::max(0, color.hsvHue());
-    int sat = color.hsvSaturation();
-    int val = color.value();
-
-    // Обратная математика: x вычисляется из sat, y вычисляется из val
-    int x = (sat * (width() - 1)) / 255;
-    int y = ((255 - val) * (height() - 1)) / 255;
-
-    m_pos = QPoint(x, y);
+    m_sat = color.hsvSaturation();
+    m_val = color.value();
+    updateCursorPos();
     updateImage();
     update();
+}
+
+void ColorPickerArea::updateCursorPos() {
+    int w = std::max(1, width() - 1);
+    int h = std::max(1, height() - 1);
+    m_pos = QPoint((m_sat * w) / 255, ((255 - m_val) * h) / 255);
 }
 
 QColor ColorPickerArea::currentColor() const { return m_image.isNull() ? Qt::white : m_image.pixelColor(m_pos); }
@@ -35,7 +36,10 @@ void ColorPickerArea::paintEvent(QPaintEvent *) {
     p.setPen(QPen(Qt::white, 2)); p.setBrush(Qt::NoBrush); p.drawEllipse(m_pos, 4, 4);
     p.setPen(QPen(Qt::black, 1)); p.drawEllipse(m_pos, 5, 5);
 }
-void ColorPickerArea::resizeEvent(QResizeEvent *e) { updateImage(); QWidget::resizeEvent(e); }
+void ColorPickerArea::resizeEvent(QResizeEvent *e) {
+    updateCursorPos();
+    QWidget::resizeEvent(e);
+}
 void ColorPickerArea::mousePressEvent(QMouseEvent *e) { pick(e->pos(), false); }
 void ColorPickerArea::mouseMoveEvent(QMouseEvent *e) { if (e->buttons() & Qt::LeftButton) pick(e->pos(), false); }
 void ColorPickerArea::mouseReleaseEvent(QMouseEvent *e) { pick(e->pos(), true); }
@@ -44,21 +48,22 @@ void ColorPickerArea::pick(const QPoint& pos, bool commit) {
     int x = qBound(0, pos.x(), width() - 1);
     int y = qBound(0, pos.y(), height() - 1);
     m_pos = QPoint(x, y);
-    if (!m_image.isNull()) {
-        QColor c = m_image.pixelColor(x, y);
-        update();
-        if (commit) emit commitColor(c); else emit previewColor(c);
-    }
+
+    m_sat = (x * 255) / std::max(1, width() - 1);
+    m_val = 255 - (y * 255) / std::max(1, height() - 1);
+
+    QColor c;
+    c.setHsv(m_hue, m_sat, m_val);
+
+    update();
+    if (commit) emit commitColor(c); else emit previewColor(c);
 }
+
 void ColorPickerArea::updateImage() {
-    int w = width(), h = height();
-    if (w <= 0 || h <= 0) return;
-    m_image = QImage(w, h, QImage::Format_RGB32);
-    for (int x = 0; x < w; ++x) {
-        for (int y = 0; y < h; ++y) {
-            int sat = (x * 255) / w;
-            int val = 255 - (y * 255) / h;
-            QColor c; c.setHsv(m_hue, sat, val);
+    m_image = QImage(256, 256, QImage::Format_RGB32);
+    for (int x = 0; x < 256; ++x) {
+        for (int y = 0; y < 256; ++y) {
+            QColor c; c.setHsv(m_hue, x, 255 - y);
             m_image.setPixelColor(x, y, c);
         }
     }

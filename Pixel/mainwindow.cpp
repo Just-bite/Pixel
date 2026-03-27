@@ -218,6 +218,7 @@ void MainWindow::onFitToScreen() {
     QRectF canvasRect(0, 0, canvas->getSize().width(), canvas->getSize().height());
     m_view_main->fitInView(canvasRect, Qt::KeepAspectRatio);
     m_view_main->scale(0.95, 0.95);
+    m_view_main->centerOn(canvasRect.center());
     updateInfoPanel();
 }
 void MainWindow::onSetAbsoluteZoom(float scale) {
