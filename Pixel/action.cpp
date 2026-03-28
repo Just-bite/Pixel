@@ -60,21 +60,6 @@ void ModifyFigureCommand::redo() {
     if (m_figure) m_figure->setState(m_new_state);
 }
 
-// Позволяет склеивать подряд идущие команды (например, при зажатой стрелочке перемещения)
-int ModifyFigureCommand::id() const {
-    return 1;
-}
-
-bool ModifyFigureCommand::mergeWith(const QUndoCommand *command) {
-    if (command->id() != id()) return false;
-    const ModifyFigureCommand *cmd = static_cast<const ModifyFigureCommand *>(command);
-    if (m_figure != cmd->m_figure) return false;
-
-    // Перезаписываем новое состояние, оставляя первоначальное (старое) без изменений
-    m_new_state = cmd->m_new_state;
-    return true;
-}
-
 MoveObjectLayerCommand::MoveObjectLayerCommand(Canvas* canvas, Object* obj, int oldLayerId, int newLayerId, QUndoCommand *p)
     : QUndoCommand(p),
     m_canvas(canvas),
@@ -91,11 +76,14 @@ void MoveObjectLayerCommand::redo() {
     if (m_canvas && m_object)
         m_canvas->moveObjectToLayer(m_object, m_new_id);
 }
-MoveObjectLayerCommand::MoveObjectLayerCommand(Canvas* canvas, Object* obj, int oldLayerId, int newLayerId, QUndoCommand *p) : QUndoCommand(p), m_canvas(canvas), m_object(obj), m_old_id(oldLayerId), m_new_id(newLayerId) { setText("Move Object Layer"); }
-void MoveObjectLayerCommand::undo() { if (m_canvas && m_object) m_canvas->moveObjectToLayer(m_object, m_old_id); }
-void MoveObjectLayerCommand::redo() { if (m_canvas && m_object) m_canvas->moveObjectToLayer(m_object, m_new_id); }
 
 ModifyTextCommand::ModifyTextCommand(TextObject* txt, const TextState& oState, const TextState& nState, QUndoCommand *p)
     : QUndoCommand(p), m_text(txt), m_old_state(oState), m_new_state(nState) { setText("Modify Text"); }
 void ModifyTextCommand::undo() { if (m_text) m_text->setState(m_old_state); }
 void ModifyTextCommand::redo() { if (m_text) m_text->setState(m_new_state); }
+
+
+ModifyImageCommand::ModifyImageCommand(ImageObject* img, const ImageState& oState, const ImageState& nState, QUndoCommand *p)
+    : QUndoCommand(p), m_image(img), m_old_state(oState), m_new_state(nState) { setText("Modify Image"); }
+void ModifyImageCommand::undo() { if (m_image) m_image->setState(m_old_state); }
+void ModifyImageCommand::redo() { if (m_image) m_image->setState(m_new_state); }

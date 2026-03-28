@@ -41,6 +41,16 @@ protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
+    enum class ClipboardType { None, Figure, Text, Image };
+    ClipboardType m_clipboard_type = ClipboardType::None;
+    FigureState m_clipboard_figure;
+    TextState m_clipboard_text;
+    ImageState m_clipboard_image;
+
+    ImageObject* m_selected_image = nullptr;
+    ImageObject* m_drag_target_image = nullptr;
+    ImageState m_drag_start_image_state;
+
     void clearTransformBox();
     QString getToolName(InstrumentType type);
 
@@ -59,7 +69,7 @@ private:
     bool m_space_pressed = false, m_is_panning = false, m_is_drawing = false;
     QPoint m_last_pan_pos;
     QPointF m_draw_start_pos;
-    QPointF m_last_mouse_scene_pos; // Для отслеживания курсора
+    QPointF m_last_mouse_scene_pos;
     Figure* m_temp_figure = nullptr;
 
     bool m_color_target_is_fill = true;
@@ -76,9 +86,9 @@ private:
     TextObject* m_temp_text = nullptr;
     TextObject* m_drag_target_text = nullptr;
     TextState m_drag_start_text_state;
-    TextState m_text_state_before_preview; // Для палитры
-    TextState m_clipboard_text_state;      // Для копипаста
-    bool m_clipboard_is_text = false;      // Что именно скопировали?
+    TextState m_text_state_before_preview;
+    TextState m_clipboard_text_state;
+    bool m_clipboard_is_text = false;
 };
 
 #endif // WORKSPACECONTROLLER_H

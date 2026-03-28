@@ -94,17 +94,6 @@ void ProjectManager::saveToJson(const QString& path) {
                 sObj["rot"] = s.rot; sObj["thick"] = s.thickness;
                 sObj["fill"] = s.fill.name(QColor::HexArgb);
                 sObj["stroke"] = s.stroke.name(QColor::HexArgb);
-
-                // Сохранение картинки в Base64 формат PNG
-                if (s.type == FigureType::Image && !s.image.isNull()) {
-                    QByteArray byteArray;
-                    QBuffer buffer(&byteArray);
-                    buffer.open(QIODevice::WriteOnly);
-                    s.image.save(&buffer, "PNG");
-                    sObj["image"] = QString::fromLatin1(byteArray.toBase64());
-                }
-
-                objsArr.append(sObj);
             } else if (TextObject* t = dynamic_cast<TextObject*>(o)) {
                 sObj["class"] = "text";
                 TextState s = t->getState();
@@ -115,6 +104,18 @@ void ProjectManager::saveToJson(const QString& path) {
                 sObj["x"] = s.rect.x(); sObj["y"] = s.rect.y();
                 sObj["w"] = s.rect.width(); sObj["h"] = s.rect.height();
                 sObj["rot"] = s.rot;
+            } else if (ImageObject* iObj = dynamic_cast<ImageObject*>(o)) {
+                sObj["class"] = "image";
+                ImageState s = iObj->getState();
+                sObj["px"] = s.pos.x(); sObj["py"] = s.pos.y();
+                sObj["x"] = s.rect.x(); sObj["y"] = s.rect.y();
+                sObj["w"] = s.rect.width(); sObj["h"] = s.rect.height();
+                sObj["rot"] = s.rot;
+                if (!s.image.isNull()) {
+                    QByteArray byteArray; QBuffer buffer(&byteArray);
+                    buffer.open(QIODevice::WriteOnly); s.image.save(&buffer, "PNG");
+                    sObj["image"] = QString::fromLatin1(byteArray.toBase64());
+                }
             }
             objsArr.append(sObj);
         }
@@ -153,25 +154,8 @@ void ProjectManager::loadFromJson(const QString& path) {
         QJsonArray objsArr = lObj["objects"].toArray();
         for (int j = 0; j < objsArr.size(); ++j) {
             QJsonObject sObj = objsArr[j].toObject();
-            Figure* f = new Figure();
-            FigureState s;
-            s.type = static_cast<FigureType>(sObj["type"].toInt());
-            s.pos = QPointF(sObj["px"].toDouble(), sObj["py"].toDouble());
-            s.rect = QRectF(sObj["x"].toDouble(), sObj["y"].toDouble(), sObj["w"].toDouble(), sObj["h"].toDouble());
-            s.rot = sObj["rot"].toDouble();
-            s.thickness = sObj["thick"].toDouble();
-            s.fill = QColor(sObj["fill"].toString());
-            s.stroke = QColor(sObj["stroke"].toString());
-
-            // Восстановление картинки
-            if (s.type == FigureType::Image && sObj.contains("image")) {
-                QByteArray byteArray = QByteArray::fromBase64(sObj["image"].toString().toLatin1());
-                s.image.loadFromData(byteArray, "PNG");
-            }
-
-            f->setState(s);
-            l->addObject(f);
             QString cls = sObj["class"].toString("figure");
+
             if (cls == "figure") {
                 Figure* f = new Figure();
                 FigureState s;
@@ -195,6 +179,18 @@ void ProjectManager::loadFromJson(const QString& path) {
                 s.rot = sObj["rot"].toDouble();
                 t->setState(s);
                 l->addObject(t);
+            } else if (cls == "image") {
+                ImageObject* imgObj = new ImageObject();
+                ImageState s;
+                s.pos = QPointF(sObj["px"].toDouble(), sObj["py"].toDouble());
+                s.rect = QRectF(sObj["x"].toDouble(), sObj["y"].toDouble(), sObj["w"].toDouble(), sObj["h"].toDouble());
+                s.rot = sObj["rot"].toDouble();
+                if (sObj.contains("image")) {
+                    QByteArray byteArray = QByteArray::fromBase64(sObj["image"].toString().toLatin1());
+                    s.image.loadFromData(byteArray, "PNG");
+                }
+                imgObj->setState(s);
+                l->addObject(imgObj);
             }
         }
         l->setLocked(lObj["locked"].toBool(false));

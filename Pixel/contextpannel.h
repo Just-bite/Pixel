@@ -20,9 +20,11 @@ public:
     void setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, const QString& toolName = "");
     void setTarget(Figure* figure);
     void setTarget(TextObject* textObj);
+    void setTarget(ImageObject* imageObj);
 
     FigureState getUIState(const FigureState& baseState) const;
     TextState getUITextState(const TextState& baseState) const;
+    ImageState getUIImageState(const ImageState& baseState) const;
 
     FigureState getDefaultState() const { return m_default_state; }
     void setDefaultColor(bool isFill, const QColor& color);
@@ -65,6 +67,8 @@ private:
 
     TextObject* m_current_text_target = nullptr;
     TextState m_default_text_state;
+
+    ImageObject* m_current_image_target = nullptr;
 };
 
 #endif // CONTEXTPANNEL_H
