@@ -110,7 +110,9 @@ QDoubleSpinBox* ContextPannel::createSpinBox(double min, double max) {
 }
 
 void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, const QString& toolName) {
-    bool somethingSelected = isFigSel || isTextSel;
+    bool isImgSel = (m_current_image_target != nullptr);
+    bool somethingSelected = isFigSel || isTextSel || isImgSel;
+
     m_lbl_placeholder->setVisible(!somethingSelected && !isFigTool && !isTextTool);
     if (!toolName.isEmpty()) m_lbl_placeholder->setText(QString("Tool: %1. No specific settings.").arg(toolName));
 
@@ -120,7 +122,7 @@ void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool 
     m_layer_group->setVisible(somethingSelected);
 
     if (!somethingSelected) {
-        m_current_target = nullptr; m_current_text_target = nullptr;
+        m_current_target = nullptr; m_current_text_target = nullptr; m_current_image_target = nullptr;
         blockSignals(true);
         if (isTextTool) {
             m_font_box->setCurrentFont(m_default_text_state.font);
@@ -132,31 +134,22 @@ void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool 
 }
 
 void ContextPannel::setTarget(Figure* figure) {
-    m_current_target = figure;
+    m_current_target = figure; m_current_text_target = nullptr; m_current_image_target = nullptr;
     if (!figure) return;
     blockSignals(true);
     FigureState s = figure->getState();
-
-    // Скрываем Style для изображений
-    if (s.type == FigureType::Image) {
-        m_style_group->setVisible(false);
-    } else {
-        m_style_group->setVisible(true);
-        m_type_box->setCurrentIndex(m_type_box->findData(static_cast<int>(s.type)));
-        m_thick_box->setValue(s.thickness);
-        updateColorButtonsUI();
-    }
-
-    m_x_box->setValue(s.pos.x());
-    m_y_box->setValue(s.pos.y());
-    m_w_box->setValue(s.rect.width());
-    m_h_box->setValue(s.rect.height());
+    m_style_group->setVisible(true);
+    m_type_box->setCurrentIndex(m_type_box->findData(static_cast<int>(s.type)));
+    m_thick_box->setValue(s.thickness);
+    m_x_box->setValue(s.pos.x()); m_y_box->setValue(s.pos.y());
+    m_w_box->setValue(s.rect.width()); m_h_box->setValue(s.rect.height());
     m_rot_box->setValue(s.rot);
+    updateColorButtonsUI();
     blockSignals(false);
 }
 
 void ContextPannel::setTarget(TextObject* textObj) {
-    m_current_target = nullptr; m_current_text_target = textObj;
+    m_current_target = nullptr; m_current_text_target = textObj; m_current_image_target = nullptr;
     if (!textObj) return;
     blockSignals(true);
     TextState s = textObj->getState();
@@ -166,6 +159,17 @@ void ContextPannel::setTarget(TextObject* textObj) {
     m_w_box->setValue(s.rect.width()); m_h_box->setValue(s.rect.height());
     m_rot_box->setValue(s.rot);
     updateColorButtonsUI();
+    blockSignals(false);
+}
+
+void ContextPannel::setTarget(ImageObject* imageObj) {
+    m_current_target = nullptr; m_current_text_target = nullptr; m_current_image_target = imageObj;
+    if (!imageObj) return;
+    blockSignals(true);
+    ImageState s = imageObj->getState();
+    m_x_box->setValue(s.pos.x()); m_y_box->setValue(s.pos.y());
+    m_w_box->setValue(s.rect.width()); m_h_box->setValue(s.rect.height());
+    m_rot_box->setValue(s.rot);
     blockSignals(false);
 }
 
@@ -180,12 +184,17 @@ TextState ContextPannel::getUITextState(const TextState& baseState) const {
 
 FigureState ContextPannel::getUIState(const FigureState& baseState) const {
     FigureState s = baseState;
-    if (s.type != FigureType::Image) {
-        s.type = static_cast<FigureType>(m_type_box->currentData().toInt());
-        s.thickness = m_thick_box->value();
-    }
+    s.type = static_cast<FigureType>(m_type_box->currentData().toInt());
+    s.thickness = m_thick_box->value();
     s.pos = QPointF(m_x_box->value(), m_y_box->value());
     s.rot = m_rot_box->value();
+    s.rect = QRectF(-m_w_box->value()/2.0, -m_h_box->value()/2.0, m_w_box->value(), m_h_box->value());
+    return s;
+}
+
+ImageState ContextPannel::getUIImageState(const ImageState& baseState) const {
+    ImageState s = baseState;
+    s.pos = QPointF(m_x_box->value(), m_y_box->value()); s.rot = m_rot_box->value();
     s.rect = QRectF(-m_w_box->value()/2.0, -m_h_box->value()/2.0, m_w_box->value(), m_h_box->value());
     return s;
 }
@@ -236,9 +245,7 @@ void ContextPannel::onMoveDownClicked() {
     emit moveObjectLayerRequested(-1);
 }
 void ContextPannel::onAnyUIChanged() {
-    if (m_current_target)
-        emit propertyChanged();
-    else if (m_current_text_target)
+    if (m_current_target || m_current_text_target || m_current_image_target)
         emit propertyChanged();
     else {
         m_default_state.type = static_cast<FigureType>(m_type_box->currentData().toInt());

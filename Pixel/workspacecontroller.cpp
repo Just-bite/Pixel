@@ -59,7 +59,7 @@ void WorkspaceController::updateTransformBoxScale() {
 
 void WorkspaceController::clearTransformBox() {
     if (m_transform_box) {
-        delete m_transform_box;
+        m_transform_box->deleteLater();
         m_transform_box = nullptr;
     }
 }
@@ -76,22 +76,24 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
 
             // Копирование
             if (kEvent->key() == Qt::Key_C) {
-                if (m_selected_figure) { m_clipboard_state = m_selected_figure->getState(); m_has_clipboard = true; m_clipboard_is_text = false; }
-                else if (m_selected_text) { m_clipboard_text_state = m_selected_text->getState(); m_has_clipboard = true; m_clipboard_is_text = true; }
-                QApplication::clipboard()->clear(); // Очищаем системный буфер, чтобы приоритет был у внутреннего
-                return true;
+                if (m_selected_figure) { m_clipboard_figure = m_selected_figure->getState(); m_clipboard_type = ClipboardType::Figure; }
+                else if (m_selected_text) { m_clipboard_text = m_selected_text->getState(); m_clipboard_type = ClipboardType::Text; }
+                else if (m_selected_image) { m_clipboard_image = m_selected_image->getState(); m_clipboard_type = ClipboardType::Image; }
+                QApplication::clipboard()->clear(); return true;
             }
             // Вырезка
             if (kEvent->key() == Qt::Key_X) {
                 if (m_selected_figure) {
-                    m_clipboard_state = m_selected_figure->getState(); m_has_clipboard = true; m_clipboard_is_text = false;
+                    m_clipboard_figure = m_selected_figure->getState(); m_clipboard_type = ClipboardType::Figure;
                     m_undo_stack->push(new DeleteObjectCommand(m_selected_figure->parentItem(), m_selected_figure));
                 } else if (m_selected_text) {
-                    m_clipboard_text_state = m_selected_text->getState(); m_has_clipboard = true; m_clipboard_is_text = true;
+                    m_clipboard_text = m_selected_text->getState(); m_clipboard_type = ClipboardType::Text;
                     m_undo_stack->push(new DeleteObjectCommand(m_selected_text->parentItem(), m_selected_text));
+                } else if (m_selected_image) {
+                    m_clipboard_image = m_selected_image->getState(); m_clipboard_type = ClipboardType::Image;
+                    m_undo_stack->push(new DeleteObjectCommand(m_selected_image->parentItem(), m_selected_image));
                 }
-                QApplication::clipboard()->clear();
-                return true;
+                QApplication::clipboard()->clear(); return true;
             }
             // Вставка
             if (kEvent->key() == Qt::Key_V && canvas) {
@@ -115,36 +117,31 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
 
                     if (!img.isNull()) {
                         m_view->scene()->clearSelection();
-                        Figure* fig = new Figure();
-                        FigureState s;
-                        s.type = FigureType::Image;
-                        s.image = img;
-                        s.pos = m_last_mouse_scene_pos;
+                        ImageObject* imgObj = new ImageObject();
+                        ImageState s; s.image = img; s.pos = m_last_mouse_scene_pos;
                         s.rect = QRectF(-img.width()/2.0, -img.height()/2.0, img.width(), img.height());
-                        fig->setState(s);
-                        canvas->addObjectToSelectedLayer(fig);
-                        m_undo_stack->push(new AddObjectCommand(fig->parentItem(), fig));
-                        fig->setSelected(true);
+                        imgObj->setState(s);
+                        canvas->addObjectToSelectedLayer(imgObj);
+                        m_undo_stack->push(new AddObjectCommand(imgObj->parentItem(), imgObj));
+                        imgObj->setSelected(true);
                         return true;
                     }
 
                     // 2. Вставка нашего внутреннего скопированного объекта
-                    if (m_has_clipboard) {
+                    if (m_clipboard_type != ClipboardType::None) {
                         m_view->scene()->clearSelection();
-                        if (!m_clipboard_is_text) {
-                            Figure* fig = new Figure();
-                            m_clipboard_state.pos = m_last_mouse_scene_pos;
-                            fig->setState(m_clipboard_state);
-                            canvas->addObjectToSelectedLayer(fig);
-                            m_undo_stack->push(new AddObjectCommand(fig->parentItem(), fig));
-                            fig->setSelected(true);
-                        } else {
-                            TextObject* txt = new TextObject();
-                            m_clipboard_text_state.pos = m_last_mouse_scene_pos;
-                            txt->setState(m_clipboard_text_state);
-                            canvas->addObjectToSelectedLayer(txt);
-                            m_undo_stack->push(new AddObjectCommand(txt->parentItem(), txt));
-                            txt->setSelected(true);
+                        if (m_clipboard_type == ClipboardType::Figure) {
+                            Figure* fig = new Figure(); m_clipboard_figure.pos = m_last_mouse_scene_pos;
+                            fig->setState(m_clipboard_figure); canvas->addObjectToSelectedLayer(fig);
+                            m_undo_stack->push(new AddObjectCommand(fig->parentItem(), fig)); fig->setSelected(true);
+                        } else if (m_clipboard_type == ClipboardType::Text) {
+                            TextObject* txt = new TextObject(); m_clipboard_text.pos = m_last_mouse_scene_pos;
+                            txt->setState(m_clipboard_text); canvas->addObjectToSelectedLayer(txt);
+                            m_undo_stack->push(new AddObjectCommand(txt->parentItem(), txt)); txt->setSelected(true);
+                        } else if (m_clipboard_type == ClipboardType::Image) {
+                            ImageObject* img = new ImageObject(); m_clipboard_image.pos = m_last_mouse_scene_pos;
+                            img->setState(m_clipboard_image); canvas->addObjectToSelectedLayer(img);
+                            m_undo_stack->push(new AddObjectCommand(img->parentItem(), img)); img->setSelected(true);
                         }
                     }
                 }
@@ -231,17 +228,16 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
             }
             if (!img.isNull()) {
                 QPointF scenePos = m_view->mapToScene(dEvent->pos());
-                Figure* fig = new Figure();
-                FigureState s;
-                s.type = FigureType::Image;
+                ImageObject* imgObj = new ImageObject();
+                ImageState s;
                 s.image = img;
                 s.pos = scenePos;
                 s.rect = QRectF(-img.width()/2.0, -img.height()/2.0, img.width(), img.height());
-                fig->setState(s);
+                imgObj->setState(s);
                 m_view->scene()->clearSelection();
-                canvas->addObjectToSelectedLayer(fig);
-                m_undo_stack->push(new AddObjectCommand(fig->parentItem(), fig));
-                fig->setSelected(true);
+                canvas->addObjectToSelectedLayer(imgObj);
+                m_undo_stack->push(new AddObjectCommand(imgObj->parentItem(), imgObj));
+                imgObj->setSelected(true);
             }
         }
         dEvent->acceptProposedAction();
@@ -423,11 +419,13 @@ void WorkspaceController::onSelectionChanged() {
         Object* obj = dynamic_cast<Object*>(item);
 
         int layerId = canvas->getLayerIdOfObject(obj);
+        // Заблокированный слой сбрасывает выделение
         if (layerId != -1 && canvas->getLayersInfo()[layerId].locked) {
             item->setSelected(false);
             return;
         }
 
+        // Авто-выбор слоя в панели
         if (layerId != -1 && layerId != canvas->getSelectedLayerid()) {
             if (m_layers_pannel) m_layers_pannel->selectLayerFromOutside(layerId);
             else canvas->selectLayer(layerId);
@@ -435,6 +433,7 @@ void WorkspaceController::onSelectionChanged() {
 
         m_selected_figure = dynamic_cast<Figure*>(obj);
         m_selected_text = dynamic_cast<TextObject*>(obj);
+        m_selected_image = dynamic_cast<ImageObject*>(obj);
 
         if (m_selected_figure) {
             m_transform_box = new TransformBox(item, m_undo_stack);
@@ -444,25 +443,39 @@ void WorkspaceController::onSelectionChanged() {
             m_transform_box = new TransformBox(item, m_undo_stack);
             updateTransformBoxScale();
             m_context_pannel->setTarget(m_selected_text);
+        } else if (m_selected_image) {
+            m_transform_box = new TransformBox(item, m_undo_stack);
+            updateTransformBoxScale();
+            m_context_pannel->setTarget(m_selected_image);
         }
 
-        if (m_selected_figure || m_selected_text) {
+        if (m_selected_figure || m_selected_text || m_selected_image) {
             m_palette_pannel->setColor(m_context_pannel->getActiveColor());
         }
     } else {
         m_selected_figure = nullptr;
         m_selected_text = nullptr;
-        m_context_pannel->setTarget(static_cast<Figure*>(nullptr));
+        m_selected_image = nullptr;
+        m_context_pannel->setTarget(static_cast<Figure*>(nullptr)); // Сброс UI
     }
 
-    m_context_pannel->setMode(m_selected_figure != nullptr, m_selected_text != nullptr,
-                              m_current_tool == InstrumentType::FIGURE, m_current_tool == InstrumentType::TEXT,
-                              getToolName(m_current_tool));
+    m_context_pannel->setMode(
+        m_selected_figure != nullptr,
+        m_selected_text != nullptr,
+        m_current_tool == InstrumentType::FIGURE,
+        m_current_tool == InstrumentType::TEXT,
+        getToolName(m_current_tool)
+        );
 }
 
 void WorkspaceController::onMoveObjectLayerRequested(int shift) {
-    Object* target = m_selected_figure ? (Object*)m_selected_figure : (Object*)m_selected_text;
+    Object* target = nullptr;
+    if (m_selected_figure) target = m_selected_figure;
+    else if (m_selected_text) target = m_selected_text;
+    else if (m_selected_image) target = m_selected_image;
+
     if (!target) return;
+
     Canvas* canvas = m_project_manager->GetCurrentCanvas();
     if (!canvas) return;
 
@@ -491,6 +504,13 @@ void WorkspaceController::onContextPropertyChanged() {
             m_undo_stack->push(new ModifyTextCommand(m_selected_text, oldState, newState));
             m_context_pannel->setTarget(m_selected_text);
         }
+    } else if (m_selected_image) {
+        ImageState oldState = m_selected_image->getState();
+        ImageState newState = m_context_pannel->getUIImageState(oldState);
+        if (oldState != newState) {
+            m_undo_stack->push(new ModifyImageCommand(m_selected_image, oldState, newState));
+            m_context_pannel->setTarget(m_selected_image);
+        }
     }
 }
 
@@ -501,24 +521,24 @@ void WorkspaceController::onColorTargetChanged(bool isFill) {
 
 void WorkspaceController::onColorPickedPreview(const QColor& color) {
     if (m_selected_figure) {
-        if (m_selected_figure->getState().type == FigureType::Image) return; // Картинки не красим
-        if (!m_is_previewing) { m_state_before_preview = m_selected_figure->getState(); m_is_previewing = true; }
-        FigureState s = m_selected_figure->getState();
-        if (m_color_target_is_fill) s.fill = color; else s.stroke = color;
-        m_selected_figure->setState(s);
-    } else if (m_selected_text) {
-        if (!m_is_previewing) { m_text_state_before_preview = m_selected_text->getState(); m_is_previewing = true; }
-        TextState s = m_selected_text->getState();
-        s.color = color;
-        m_selected_text->setState(s);
-    } else {
-        m_context_pannel->setDefaultColor(m_color_target_is_fill, color);
+        if (!m_selected_figure) {
+            if (!m_is_previewing) { m_state_before_preview = m_selected_figure->getState(); m_is_previewing = true; }
+            FigureState s = m_selected_figure->getState();
+            if (m_color_target_is_fill) s.fill = color; else s.stroke = color;
+            m_selected_figure->setState(s);
+        } else if (m_selected_text) {
+            if (!m_is_previewing) { m_text_state_before_preview = m_selected_text->getState(); m_is_previewing = true; }
+            TextState s = m_selected_text->getState();
+            s.color = color;
+            m_selected_text->setState(s);
+        } else {
+            m_context_pannel->setDefaultColor(m_color_target_is_fill, color);
+        }
     }
 }
 
 void WorkspaceController::onColorPickedCommit(const QColor& color) {
     if (m_selected_figure) {
-        if (m_selected_figure->getState().type == FigureType::Image) return;
         FigureState newState = m_selected_figure->getState();
         if (m_color_target_is_fill) newState.fill = color; else newState.stroke = color;
         if (m_is_previewing) {

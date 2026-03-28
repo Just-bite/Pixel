@@ -63,4 +63,15 @@ private:
     TextState m_new_state;
 };
 
+class ModifyImageCommand : public QUndoCommand {
+public:
+    ModifyImageCommand(ImageObject* imgObj, const ImageState& oldState, const ImageState& newState, QUndoCommand *parent = nullptr);
+    void undo() override;
+    void redo() override;
+private:
+    ImageObject* m_image;
+    ImageState m_old_state;
+    ImageState m_new_state;
+};
+
 #endif // ACTION_H

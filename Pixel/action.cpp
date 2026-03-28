@@ -81,3 +81,9 @@ ModifyTextCommand::ModifyTextCommand(TextObject* txt, const TextState& oState, c
     : QUndoCommand(p), m_text(txt), m_old_state(oState), m_new_state(nState) { setText("Modify Text"); }
 void ModifyTextCommand::undo() { if (m_text) m_text->setState(m_old_state); }
 void ModifyTextCommand::redo() { if (m_text) m_text->setState(m_new_state); }
+
+
+ModifyImageCommand::ModifyImageCommand(ImageObject* img, const ImageState& oState, const ImageState& nState, QUndoCommand *p)
+    : QUndoCommand(p), m_image(img), m_old_state(oState), m_new_state(nState) { setText("Modify Image"); }
+void ModifyImageCommand::undo() { if (m_image) m_image->setState(m_old_state); }
+void ModifyImageCommand::redo() { if (m_image) m_image->setState(m_new_state); }

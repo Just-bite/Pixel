@@ -19,6 +19,7 @@ void Layer::addObject(Object* object) {
     if (!object) return;
     object->setParentItem(this);
     object->setFlag(QGraphicsItem::ItemIsMovable, !m_locked);
+    object->setFlag(QGraphicsItem::ItemIsSelectable, !m_locked);
 }
 
 void Layer::removeObject(Object* object) {
@@ -38,6 +39,7 @@ void Layer::setLocked(const bool locked) {
     for (QGraphicsItem* item : childItems()) {
         if (Object* obj = dynamic_cast<Object*>(item)) {
             obj->setFlag(QGraphicsItem::ItemIsMovable, !m_locked);
+            obj->setFlag(QGraphicsItem::ItemIsSelectable, !m_locked);
         }
     }
 }

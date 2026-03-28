@@ -8,29 +8,52 @@
 #include <QImage>
 #include <QPixmap>
 #include <QStyleOptionGraphicsItem>
+#include <QFont>
+#include <qmath.h>
 
-enum class FigureType {
-    Ellipse,
-    Rectangle,
-    Image
+struct TransformState {
+    QPointF pos;
+    qreal rot = 0.0;
+    QRectF rect;
+
+    bool operator==(const TransformState& o) const {
+        return pos == o.pos && qAbs(rot - o.rot) < 0.1 && rect == o.rect;
+    }
+    bool operator!=(const TransformState& o) const { return !(*this == o); }
 };
 
-struct FigureState {
-    QPointF pos;
-    qreal rot;
-    QRectF rect;
-    FigureType type;
-    QColor fill;
-    QColor stroke;
-    float thickness;
-    QImage image;
+enum class FigureType { Ellipse, Rectangle };
+
+struct FigureState : public TransformState {
+    FigureType type = FigureType::Ellipse;
+    QColor fill = Qt::cyan;
+    QColor stroke = Qt::black;
+    float thickness = 2.0f;
 
     bool operator==(const FigureState& o) const {
-        return pos == o.pos && rot == o.rot && rect == o.rect &&
-               type == o.type && fill == o.fill && stroke == o.stroke &&
-               thickness == o.thickness && image == o.image;
+        return TransformState::operator==(o) && type == o.type && fill == o.fill && stroke == o.stroke && thickness == o.thickness;
     }
     bool operator!=(const FigureState& o) const { return !(*this == o); }
+};
+
+struct TextState : public TransformState {
+    QString text;
+    QFont font;
+    QColor color;
+
+    bool operator==(const TextState& o) const {
+        return TransformState::operator==(o) && text == o.text && font == o.font && color == o.color;
+    }
+    bool operator!=(const TextState& o) const { return !(*this == o); }
+};
+
+struct ImageState : public TransformState {
+    QImage image;
+
+    bool operator==(const ImageState& o) const {
+        return TransformState::operator==(o) && image == o.image;
+    }
+    bool operator!=(const ImageState& o) const { return !(*this == o); }
 };
 
 class Object : public QGraphicsObject
@@ -52,8 +75,7 @@ public:
     virtual QRectF getLocalRect() const = 0;
 };
 
-class Figure : public Object
-{
+class Figure : public Object {
     Q_OBJECT
 public:
     explicit Figure(const QRectF& rect, FigureType type = FigureType::Ellipse, QGraphicsItem* parent = nullptr);
@@ -68,33 +90,11 @@ public:
 
     FigureState getState() const;
     void setState(const FigureState& state);
-
 private:
     FigureState m_state;
-
-    // Кэш для оптимизации отрисовки изображений
-    QPixmap m_cached_pixmap;
-    QRectF m_cached_rect;
 };
 
-#include <QFont>
-
-struct TextState {
-    QString text;
-    QFont font;
-    QColor color;
-    QPointF pos;
-    qreal rot;
-    QRectF rect;
-
-    bool operator==(const TextState& o) const {
-        return text == o.text && font == o.font && color == o.color && pos == o.pos && rot == o.rot && rect == o.rect;
-    }
-    bool operator!=(const TextState& o) const { return !(*this == o); }
-};
-
-class TextObject : public Object
-{
+class TextObject : public Object {
     Q_OBJECT
 public:
     explicit TextObject(const QRectF& rect, QGraphicsItem* parent = nullptr);
@@ -109,9 +109,29 @@ public:
 
     TextState getState() const;
     void setState(const TextState& state);
-
 private:
     TextState m_state;
+};
+
+class ImageObject : public Object {
+    Q_OBJECT
+public:
+    explicit ImageObject(const QRectF& rect, const QImage& img, QGraphicsItem* parent = nullptr);
+    explicit ImageObject(QGraphicsItem* parent = nullptr);
+
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+    QRectF boundingRect() const override;
+    QPainterPath shape() const override;
+
+    void setLocalRect(const QRectF& rect) override;
+    QRectF getLocalRect() const override;
+
+    ImageState getState() const;
+    void setState(const ImageState& state);
+private:
+    ImageState m_state;
+    QPixmap m_cached_pixmap;
+    QRectF m_cached_rect;
 };
 
 #endif // OBJECT_H
