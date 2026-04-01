@@ -1,4 +1,4 @@
-#include "infopannel.h"
+#include "include\infopannel.h"
 
 InfoPannel::InfoPannel(std::pair<int, int> canvas_size, float scale, QWidget* parent)
     : QWidget(parent)

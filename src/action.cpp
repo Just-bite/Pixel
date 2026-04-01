@@ -1,4 +1,4 @@
-#include "action.h"
+#include "include\action.h"
 
 AddObjectCommand::AddObjectCommand(QGraphicsItem* pLayer, QGraphicsItem* obj, QUndoCommand *p)
     : QUndoCommand(p), m_parent_layer(pLayer), m_object(obj) { setText("Add Figure"); }

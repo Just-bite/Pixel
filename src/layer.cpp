@@ -1,4 +1,4 @@
-#include "layer.h"
+#include "include\layer.h"
 #include <QDebug>
 
 Layer::Layer(QGraphicsItem* parent)

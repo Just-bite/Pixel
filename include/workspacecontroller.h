@@ -100,7 +100,6 @@ private:
     TextState m_clipboard_text_state;
     bool m_clipboard_is_text = false;
 
-    // Флаг для предотвращения рекурсивного создания TransformBox
     bool m_updating_selection = false;
 };
 

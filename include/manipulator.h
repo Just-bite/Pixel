@@ -32,7 +32,7 @@ protected:
 
 private:
     QUndoStack* m_undo_stack;
-    QGraphicsItem* m_target; // Теперь ссылаемся на цель, а не на parentItem
+    QGraphicsItem* m_target;
 
     enum InteractionState {
         None, Rotate,

@@ -1,6 +1,5 @@
-#include "object.h"
+#include "include\object.h"
 
-// --- FIGURE ---
 Figure::Figure(const QRectF& rect, FigureType type, QGraphicsItem* parent) : Object(parent) {
     m_state.rect = rect; m_state.type = type; m_state.fill = QColor(Qt::cyan);
     m_state.stroke = QColor(Qt::black); m_state.thickness = 2.0f;

@@ -1,6 +1,6 @@
-#include "manipulator.h"
-#include "action.h"
-#include "object.h"
+#include "include\manipulator.h"
+#include "include\action.h"
+#include "include\object.h"
 #include <QPen>
 #include <QBrush>
 #include <QLineF>
@@ -9,7 +9,6 @@
 TransformBox::TransformBox(QGraphicsItem *target, QUndoStack* undoStack)
     : QGraphicsObject(nullptr), m_undo_stack(undoStack), m_target(target)
 {
-    // Отрисовываем ПОВЕРХ всего на сцене, включая фильтры!
     setZValue(10000);
     setFlag(ItemIsSelectable, false);
     syncPosition();

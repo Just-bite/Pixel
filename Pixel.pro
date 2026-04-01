@@ -35,22 +35,22 @@ SOURCES += \
     src/workspacecontroller.cpp
 
 HEADERS += \
-    src/action.h \
-    src/canvas.h \
-    src/contextpannel.h \
-    src/filterlayer.h \
-    src/infopannel.h \
-    src/layer.h \
-    src/instrumentpannel.h \
-    src/layerspannel.h \
-    src/mainwindow.h \
-    src/manipulator.h \
-    src/object.h \
-    src/palettepannel.h \
-    src/project.h \
-    src/projectmanager.h \
-    src/tool.h \
-    src/workspacecontroller.h
+    include/action.h \
+    include/canvas.h \
+    include/contextpannel.h \
+    include/filterlayer.h \
+    include/infopannel.h \
+    include/layer.h \
+    include/instrumentpannel.h \
+    include/layerspannel.h \
+    include/mainwindow.h \
+    include/manipulator.h \
+    include/object.h \
+    include/palettepannel.h \
+    include/project.h \
+    include/projectmanager.h \
+    include/tool.h \
+    include/workspacecontroller.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

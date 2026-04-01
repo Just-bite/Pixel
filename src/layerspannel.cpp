@@ -1,4 +1,4 @@
-#include "layerspannel.h"
+#include "include\layerspannel.h"
 #include <QPainter>
 #include <QStyleOption>
 #include <QMouseEvent>

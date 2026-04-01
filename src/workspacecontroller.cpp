@@ -1,5 +1,5 @@
-#include "workspacecontroller.h"
-#include "action.h"
+#include "include\workspacecontroller.h"
+#include "include\action.h"
 #include <QApplication>
 #include <QKeyEvent>
 #include <QScrollBar>
@@ -10,7 +10,7 @@
 #include <QUrl>
 #include <QInputDialog>
 
-    WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* parent)
+WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* parent)
     : QObject(parent), m_view(ctx.view), m_project_manager(ctx.projectManager),
 m_context_pannel(ctx.contextPannel), m_palette_pannel(ctx.palettePannel),
 m_layers_pannel(ctx.layersPannel), m_last_mouse_scene_pos(0,0)

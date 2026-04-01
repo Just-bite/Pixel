@@ -1,4 +1,4 @@
-#include "filterlayer.h"
+#include "include\filterlayer.h"
 #include <QPainter>
 #include <QGraphicsScene>
 #include <QGraphicsPixmapItem>
@@ -71,7 +71,7 @@ void FilterLayer::applyFilter() {
             scene.render(&p);
         }
     }
-    update(); // Запрашиваем перерисовку слоя
+    update();
 }
 
 QRectF FilterLayer::boundingRect() const {

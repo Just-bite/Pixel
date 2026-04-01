@@ -8,8 +8,8 @@ enum class FilterType { None, Grayscale, Invert, BrightnessContrast, Blur };
 
 struct FilterState {
     FilterType type = FilterType::Grayscale;
-    float param1 = 0.0f; // Brightness (-100..100) or Blur Radius (0..50)
-    float param2 = 0.0f; // Contrast (-100..100)
+    float param1 = 0.0f;
+    float param2 = 0.0f;
 
     bool operator==(const FilterState& o) const {
         return type == o.type && qAbs(param1 - o.param1) < 0.01f && qAbs(param2 - o.param2) < 0.01f;
@@ -27,7 +27,6 @@ public:
     FilterState getFilterState() const { return m_filter_state; }
     void setFilterState(const FilterState& state);
 
-    // Загружает сцену (под этим слоем) и применяет фильтр
     void setCachedImage(const QImage& img);
 
     QRectF boundingRect() const override;

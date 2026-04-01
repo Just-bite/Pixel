@@ -12,6 +12,7 @@ struct ToolActArg
     void* extra;
 };
 
+
 class Tool
 {
 public:

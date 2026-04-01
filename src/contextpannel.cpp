@@ -1,4 +1,4 @@
-#include "contextpannel.h"
+#include "include\contextpannel.h"
 
 ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     setMinimumHeight(65);

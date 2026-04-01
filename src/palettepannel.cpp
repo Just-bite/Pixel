@@ -1,4 +1,4 @@
-#include "palettepannel.h"
+#include "include\palettepannel.h"
 #include <QRegularExpressionValidator>
 #include <QRegularExpression>
 

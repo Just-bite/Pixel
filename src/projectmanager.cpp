@@ -1,4 +1,4 @@
-#include "projectmanager.h"
+#include "include\projectmanager.h"
 #include <QDebug>
 #include <QFileDialog>
 #include <QJsonDocument>

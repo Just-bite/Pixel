@@ -1,4 +1,4 @@
-#include "instrumentpannel.h"
+#include "include\instrumentpannel.h"
 
 #define SVG_PATH_PREFIX ":/application_icon/resources/"
 

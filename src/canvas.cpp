@@ -1,4 +1,4 @@
-#include "canvas.h"
+#include "include\canvas.h"
 #define ID_IN_BOUNDS(id) (id >= 0 && id < (int)m_layers.size())
 
 Canvas::Canvas(QObject* parent)
