@@ -28,7 +28,6 @@ MainWindow::MainWindow(QWidget *parent)
     m_scene_main->setSceneRect(-10000, -10000, 20000, 20000);
     m_view_main->viewport()->setMouseTracking(true);
 
-    // Добавляем поддержку Drag-and-Drop для Canvas
     m_view_main->setAcceptDrops(true);
     m_view_main->viewport()->setAcceptDrops(true);
 
@@ -92,7 +91,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     setCentralWidget(container_main);
 
-    m_workspace_controller = new WorkspaceController(m_view_main, m_scene_main, m_project_manager, m_context_pannel_layout, palette_widget, m_layers_pannel, this);
+    WorkspaceContext ctx = {
+        m_view_main, m_scene_main, m_project_manager,
+        m_context_pannel_layout, palette_widget, m_layers_pannel
+    };
+    m_workspace_controller = new WorkspaceController(ctx, this);
+
     connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);
     connect(m_workspace_controller, &WorkspaceController::viewportChanged, this, &MainWindow::updateInfoPanel);
 

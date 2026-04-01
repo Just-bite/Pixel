@@ -36,7 +36,6 @@ QRectF TransformBox::boundingRect() const {
     qreal actualSx = sx * m_view_scale;
     qreal actualSy = sy * m_view_scale;
 
-    // Рассчитываем динамический отступ, чтобы ручки не обрезались при сильном отдалении
     qreal padX = 100.0 / actualSx;
     qreal padY = 100.0 / actualSy;
     return targetRect().adjusted(-padX, -padY, padX, padY);
@@ -175,14 +174,26 @@ void TransformBox::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 void TransformBox::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
     if (m_state != None) {
-        Figure* fig = dynamic_cast<Figure*>(parentItem());
-        if (fig) {
+        if (Figure* fig = dynamic_cast<Figure*>(parentItem())) {
             FigureState startState = fig->getState();
             startState.pos = m_start_pos;
             startState.rot = m_start_rotation;
             startState.rect = m_start_rect;
-
             m_undo_stack->push(new ModifyFigureCommand(fig, startState, fig->getState()));
+        }
+        else if (TextObject* txt = dynamic_cast<TextObject*>(parentItem())) {
+            TextState startState = txt->getState();
+            startState.pos = m_start_pos;
+            startState.rot = m_start_rotation;
+            startState.rect = m_start_rect;
+            m_undo_stack->push(new ModifyTextCommand(txt, startState, txt->getState()));
+        }
+        else if (ImageObject* img = dynamic_cast<ImageObject*>(parentItem())) {
+            ImageState startState = img->getState();
+            startState.pos = m_start_pos;
+            startState.rot = m_start_rotation;
+            startState.rect = m_start_rect;
+            m_undo_stack->push(new ModifyImageCommand(img, startState, img->getState()));
         }
         m_state = None;
     } else {

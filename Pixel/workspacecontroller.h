@@ -16,10 +16,19 @@
 #include "layerspannel.h"
 #include "manipulator.h"
 
+struct WorkspaceContext {
+    QGraphicsView* view;
+    QGraphicsScene* scene;
+    ProjectManager* projectManager;
+    ContextPannel* contextPannel;
+    PalettePannel* palettePannel;
+    LayersPannel* layersPannel;
+};
+
 class WorkspaceController : public QObject {
     Q_OBJECT
 public:
-    explicit WorkspaceController(QGraphicsView* view, QGraphicsScene* scene, ProjectManager* projectManager, ContextPannel* contextPannel, PalettePannel* palettePannel, LayersPannel* layersPannel, QObject *parent = nullptr);
+    explicit WorkspaceController(const WorkspaceContext& ctxm, QObject* parent = nullptr);
 
     QUndoStack* getUndoStack() const { return m_undo_stack; }
 
