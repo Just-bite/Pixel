@@ -10,15 +10,17 @@
 #include <QUrl>
 #include <QInputDialog>
 
-WorkspaceController::WorkspaceController(QGraphicsView* view, QGraphicsScene* scene, ProjectManager* pm, ContextPannel* cp, PalettePannel* pp, LayersPannel* lp, QObject *parent)
-    : QObject(parent), m_view(view), m_project_manager(pm), m_context_pannel(cp), m_palette_pannel(pp), m_layers_pannel(lp), m_last_mouse_scene_pos(0,0)
+WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* parent)
+    : QObject(parent), m_view(ctx.view), m_project_manager(ctx.projectManager),
+    m_context_pannel(ctx.contextPannel), m_palette_pannel(ctx.palettePannel),
+    m_layers_pannel(ctx.layersPannel), m_last_mouse_scene_pos(0,0)
 {
     m_undo_stack = new QUndoStack(this);
     if (m_view) {
         m_view->installEventFilter(this);
         m_view->viewport()->installEventFilter(this);
     }
-    if (scene) connect(scene, &QGraphicsScene::selectionChanged, this, &WorkspaceController::onSelectionChanged);
+    if (ctx.scene) connect(ctx.scene, &QGraphicsScene::selectionChanged, this, &WorkspaceController::onSelectionChanged);
 
     if (m_context_pannel) {
         connect(m_context_pannel, &ContextPannel::propertyChanged, this, &WorkspaceController::onContextPropertyChanged);
@@ -305,6 +307,8 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                 }
                 return true;
             }
+
+
             if (mEvent->button() == Qt::LeftButton && m_current_tool == InstrumentType::POINTER) {
                 QGraphicsItem* item = m_view->itemAt(mEvent->pos());
 
@@ -317,6 +321,11 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                 if (!txt && item && item->parentItem()) txt = dynamic_cast<TextObject*>(item->parentItem());
                 if (txt) { m_drag_target_text = txt; m_drag_start_text_state = txt->getState(); }
                 else { m_drag_target_text = nullptr; }
+
+                ImageObject* img = dynamic_cast<ImageObject*>(item);
+                if (!img && item && item->parentItem()) img = dynamic_cast<ImageObject*>(item->parentItem());
+                if (img) { m_drag_target_image = img; m_drag_start_image_state = img->getState(); }
+                else { m_drag_target_image = nullptr; }
             }
         }
 
@@ -402,6 +411,14 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
                         if (m_drag_target_text == m_selected_text) m_context_pannel->setTarget(m_selected_text);
                     }
                     m_drag_target_text = nullptr;
+                }
+                if (m_drag_target_image) {
+                    ImageState newState = m_drag_target_image->getState();
+                    if (!handledByTransformBox && newState != m_drag_start_image_state) {
+                        m_undo_stack->push(new ModifyImageCommand(m_drag_target_image, m_drag_start_image_state, newState));
+                        if (m_drag_target_image == m_selected_image) m_context_pannel->setTarget(m_selected_image);
+                    }
+                    m_drag_target_image = nullptr;
                 }
             }
         }
