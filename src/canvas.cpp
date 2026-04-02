@@ -1,4 +1,6 @@
 #include "include\canvas.h"
+#include "include\manipulator.h"
+
 #define ID_IN_BOUNDS(id) (id >= 0 && id < (int)m_layers.size())
 
 Canvas::Canvas(QObject* parent)
@@ -164,8 +166,9 @@ void Canvas::updateFilters() {
     if (m_canvas_size.width() <= 0 || m_canvas_size.height() <= 0) return;
 
     std::vector<QGraphicsItem*> hidden_ui;
+
     for (QGraphicsItem* item : m_parent_sceene->items()) {
-        if (item->zValue() >= 1000 && item->isVisible()) {
+        if (dynamic_cast<TransformBox*>(item) && item->isVisible()) {
             item->setVisible(false);
             hidden_ui.push_back(item);
         }

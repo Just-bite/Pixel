@@ -91,10 +91,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     setCentralWidget(container_main);
 
-    WorkspaceContext ctx = {
-        m_view_main, m_scene_main, m_project_manager,
-        m_context_pannel_layout, palette_widget, m_layers_pannel
-    };
+    WorkspaceContext ctx;
+    ctx.view = m_view_main;
+    ctx.scene = m_scene_main;
+    ctx.projectManager = m_project_manager;
+    ctx.contextPannel = m_context_pannel_layout;
+    ctx.palettePannel = palette_widget;
+    ctx.layersPannel = m_layers_pannel;
+
     m_workspace_controller = new WorkspaceController(ctx, this);
 
     connect(m_instrument_pannel_layout, &InstrumentPannel::instrumentSelected, m_workspace_controller, &WorkspaceController::setCurrentTool);

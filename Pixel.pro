@@ -18,6 +18,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     src/action.cpp \
     src/canvas.cpp \
+    src/concrete_tools.cpp \
     src/contextpannel.cpp \
     src/filterlayer.cpp \
     src/infopannel.cpp \
@@ -37,6 +38,7 @@ SOURCES += \
 HEADERS += \
     include/action.h \
     include/canvas.h \
+    include/concrete_tools.h \
     include/contextpannel.h \
     include/filterlayer.h \
     include/infopannel.h \
@@ -50,6 +52,7 @@ HEADERS += \
     include/project.h \
     include/projectmanager.h \
     include/tool.h \
+    include/workspacecontext.h \
     include/workspacecontroller.h
 
 # Default rules for deployment.

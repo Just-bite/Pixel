@@ -1,43 +1,34 @@
 #ifndef TOOL_H
 #define TOOL_H
 
-#include "canvas.h"
-#include "object.h"
-#include "projectmanager.h"
+#include <QObject>
+#include <QMouseEvent>
+#include <QKeyEvent>
+#include "workspacecontext.h"
 
-struct ToolActArg
-{
-    QPointF first;
-    QPointF second;
-    void* extra;
-};
-
-
-class Tool
-{
+class Tool : public QObject {
+    Q_OBJECT
 public:
-    Tool() = default;
+    explicit Tool(QObject* parent = nullptr) : QObject(parent) {}
+    virtual ~Tool() = default;
 
-    virtual void actOnSelectedArea(Canvas* canvas, ToolActArg arg) = 0;
-};
+    // Жизненный цикл инструмента
+    virtual void onActivate(const WorkspaceContext& ctx) {}
+    virtual void onDeactivate(const WorkspaceContext& ctx) {}
 
-class FigureTool : public Tool
-{
-public:
-    FigureTool() = default;
+    // События мыши и клавиатуры
+    virtual bool mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) { return false; }
+    virtual bool mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) { return false; }
+    virtual bool mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) { return false; }
+    virtual bool mouseDoubleClickEvent(QMouseEvent* event, const WorkspaceContext& ctx) { return false; }
 
-    void actOnSelectedArea(Canvas* canvas, ToolActArg arg) override
-    {
-        QRectF rect(arg.first.x() - 20, arg.first.y() - 20, 40, 40);
+    virtual bool keyPressEvent(QKeyEvent* event, const WorkspaceContext& ctx) { return false; }
+    virtual bool keyReleaseEvent(QKeyEvent* event, const WorkspaceContext& ctx) { return false; }
 
-        Figure* fig = new Figure(rect, FigureType::Ellipse);
-
-        FigureState s = fig->getState();
-        s.fill = Qt::cyan;
-        fig->setState(s);
-
-        canvas->addObjectToSelectedLayer(fig);
-    }
+    // События от других частей системы
+    virtual void onSelectionChanged(const WorkspaceContext& ctx) {}
+    virtual void onViewScaleChanged(const WorkspaceContext& ctx) {}
+    virtual void onObjectModified(const WorkspaceContext& ctx) {}
 };
 
 #endif // TOOL_H
