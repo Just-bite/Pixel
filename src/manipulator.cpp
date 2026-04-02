@@ -16,8 +16,11 @@ TransformBox::TransformBox(QGraphicsItem *target, QUndoStack* undoStack)
 
 void TransformBox::syncPosition() {
     if (m_target) {
+        // Обязательно предупреждаем графический движок, что рамка могла поменять размер или позицию
+        prepareGeometryChange();
         setPos(m_target->scenePos());
         setRotation(m_target->rotation());
+        update(); // Принудительная перерисовка
     }
 }
 

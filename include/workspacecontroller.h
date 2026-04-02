@@ -2,33 +2,18 @@
 #define WORKSPACECONTROLLER_H
 
 #include <QObject>
-#include <QGraphicsView>
-#include <QGraphicsScene>
-#include <QEvent>
 #include <QUndoStack>
-#include <QInputDialog>
+#include <memory>
+#include <unordered_map>
 
-#include "projectmanager.h"
-#include "object.h"
+#include "workspacecontext.h"
 #include "instrumentpannel.h"
-#include "contextpannel.h"
-#include "palettepannel.h"
-#include "layerspannel.h"
-#include "manipulator.h"
-
-struct WorkspaceContext {
-    QGraphicsView* view;
-    QGraphicsScene* scene;
-    ProjectManager* projectManager;
-    ContextPannel* contextPannel;
-    PalettePannel* palettePannel;
-    LayersPannel* layersPannel;
-};
+#include "concrete_tools.h"
 
 class WorkspaceController : public QObject {
     Q_OBJECT
 public:
-    explicit WorkspaceController(const WorkspaceContext& ctxm, QObject* parent = nullptr);
+    explicit WorkspaceController(const WorkspaceContext& ctx, QObject* parent = nullptr);
 
     QUndoStack* getUndoStack() const { return m_undo_stack; }
 
@@ -51,56 +36,29 @@ protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
+    void handleGlobalShortcuts(QKeyEvent* kEvent);
+    void handlePaste();
+    void handleDrop(QDropEvent* event);
+
+    WorkspaceContext m_context;
+    QUndoStack* m_undo_stack;
+
+    std::unordered_map<InstrumentType, std::unique_ptr<Tool>> m_tools;
+    Tool* m_active_tool = nullptr;
+    InstrumentType m_current_tool_type = InstrumentType::POINTER;
+    InstrumentType m_previous_tool_type = InstrumentType::POINTER;
+
+    // Глобальный буфер обмена
     enum class ClipboardType { None, Figure, Text, Image };
     ClipboardType m_clipboard_type = ClipboardType::None;
     FigureState m_clipboard_figure;
     TextState m_clipboard_text;
     ImageState m_clipboard_image;
 
-    ImageObject* m_selected_image = nullptr;
-    ImageObject* m_drag_target_image = nullptr;
-    ImageState m_drag_start_image_state;
-
-    void clearTransformBox();
-    QString getToolName(InstrumentType type);
-
-    QGraphicsView* m_view;
-    ProjectManager* m_project_manager;
-    ContextPannel* m_context_pannel;
-    PalettePannel* m_palette_pannel;
-    LayersPannel* m_layers_pannel;
-
-    TransformBox* m_transform_box = nullptr;
-    QUndoStack* m_undo_stack;
-
-    Figure* m_selected_figure = nullptr;
-    InstrumentType m_current_tool = InstrumentType::POINTER;
-
-    bool m_space_pressed = false, m_is_panning = false, m_is_drawing = false;
-    QPoint m_last_pan_pos;
-    QPointF m_draw_start_pos;
-    QPointF m_last_mouse_scene_pos;
-    Figure* m_temp_figure = nullptr;
-
     bool m_color_target_is_fill = true;
-    FigureState m_state_before_preview;
     bool m_is_previewing = false;
-
-    FigureState m_clipboard_state;
-    bool m_has_clipboard = false;
-
-    Figure* m_drag_target = nullptr;
-    FigureState m_drag_start_state;
-
-    TextObject* m_selected_text = nullptr;
-    TextObject* m_temp_text = nullptr;
-    TextObject* m_drag_target_text = nullptr;
-    TextState m_drag_start_text_state;
+    FigureState m_state_before_preview;
     TextState m_text_state_before_preview;
-    TextState m_clipboard_text_state;
-    bool m_clipboard_is_text = false;
-
-    bool m_updating_selection = false;
 };
 
 #endif // WORKSPACECONTROLLER_H
