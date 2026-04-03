@@ -3,6 +3,8 @@
 
 #include <QGraphicsObject>
 #include <QString>
+#include <QImage>
+#include <QPainter>
 
 #include "object.h"
 
@@ -11,6 +13,7 @@ struct LayerInfo {
     bool visible;
     bool locked;
     bool isFilter;
+    bool isRasterized;
 };
 
 class Layer : public QGraphicsObject {
@@ -34,6 +37,12 @@ public:
     void setLocked(const bool locked);
     bool isLocked() const { return m_locked; }
 
+    void setRasterized(bool rasterized);
+    bool isRasterized() const { return m_is_rasterized; }
+
+    void setRasterImage(const QImage& img);
+    QImage getRasterImage() const { return m_raster_image; }
+
     LayerInfo getInfo() const;
 
     virtual QRectF boundingRect() const override;
@@ -43,6 +52,8 @@ public:
 private:
     bool m_visible;
     bool m_locked;
+    bool m_is_rasterized = false;
+    QImage m_raster_image;
     QString m_name;
 };
 

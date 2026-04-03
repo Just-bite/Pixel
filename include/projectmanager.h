@@ -11,6 +11,7 @@ class ProjectManager : public QWidget {
 public:
     explicit ProjectManager(QWidget* parent = nullptr);
     Canvas* GetCurrentCanvas();
+    Project* getCurrentProject() { return m_selected_project; }
     void createProject();
 
 signals:

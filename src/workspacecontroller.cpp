@@ -1,6 +1,6 @@
 #include "include/workspacecontroller.h"
 #include "include/action.h"
-
+#include "include/raster_action.h"
 #include "include/projectmanager.h"
 #include "include/contextpannel.h"
 #include "include/palettepannel.h"
@@ -11,6 +11,12 @@
 #include <QMimeData>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QCheckBox>
+#include <QDialogButtonBox>
+
 
 WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* parent)
     : QObject(parent), m_context(ctx)
@@ -23,6 +29,7 @@ WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* p
     m_tools[InstrumentType::HAND].reset(new HandTool(this));
     m_tools[InstrumentType::FIGURE].reset(new FigureTool(this));
     m_tools[InstrumentType::TEXT].reset(new TextTool(this));
+    m_tools[InstrumentType::PENCIL].reset(new PencilTool(this));
 
     if (m_context.view) {
         m_context.view->installEventFilter(this);
@@ -365,11 +372,59 @@ void WorkspaceController::onMoveObjectLayerRequested(int shift) {
 }
 
 void WorkspaceController::clearState() {
-
     if (m_active_tool) m_active_tool->onDeactivate(m_context);
 
     m_context.scene->clearSelection();
     if (m_undo_stack) m_undo_stack->clear();
 
     setCurrentTool(InstrumentType::POINTER);
+}
+
+bool WorkspaceController::tryRasterizeLayer() {
+    Canvas* canvas = m_context.projectManager->GetCurrentCanvas();
+    if (!canvas) return false;
+
+    int activeId = canvas->getSelectedLayerid();
+    if (activeId < 0) return false;
+
+    Layer* layer = canvas->getLayers()[activeId];
+
+    if (layer->isFilter()) return false; // На фильтре рисовать нельзя
+
+    // ИСПРАВЛЕНИЕ: Если слой растровый И на нем нет векторных объектов, просто рисуем!
+    if (layer->isRasterized() && layer->getObjects().empty()) {
+        return true;
+    }
+
+    // Если мы дошли сюда, значит слой либо чисто векторный, либо растровый с добавленными поверх векторами.
+    Project* proj = m_context.projectManager->getCurrentProject();
+
+    if (proj->getAskRasterize()) {
+        QDialog dlg;
+        dlg.setWindowTitle("Rasterize Layer");
+
+        QVBoxLayout* layout = new QVBoxLayout(&dlg);
+        layout->addWidget(new QLabel("This layer must be rasterized to use raster tools.\nVector objects will be baked into the image and will no longer be editable."));
+
+        QCheckBox* cb = new QCheckBox("Don't ask again");
+        layout->addWidget(cb);
+
+        QDialogButtonBox* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        layout->addWidget(box);
+
+        connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+        connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+        if (dlg.exec() != QDialog::Accepted) return false;
+
+        if (cb->isChecked()) {
+            proj->setAskRasterize(false);
+        }
+    }
+
+    // Растрируем
+    m_undo_stack->push(new RasterizeLayerCommand(canvas, activeId));
+    m_context.scene->clearSelection(); // Безопасно снимаем фокус с элементов (предотвращает краш)
+
+    return true;
 }

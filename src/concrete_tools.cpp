@@ -6,6 +6,8 @@
 #include "include/layerspannel.h"
 #include <QScrollBar>
 #include <QInputDialog>
+#include "include/workspacecontroller.h"
+#include <QDebug>
 
 // ==================== POINTER TOOL ====================
 PointerTool::PointerTool(QObject* parent) : Tool(parent) {}
@@ -373,6 +375,42 @@ bool TextTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx
             }
             m_temp_text = nullptr;
         }
+        return true;
+    }
+    return false;
+}
+
+// ==================== PENCIL TOOL (STUB) ====================
+void PencilTool::onActivate(const WorkspaceContext& ctx) {
+    ctx.view->setCursor(Qt::CrossCursor);
+    ctx.contextPannel->setMode(false, false, false, false, "Pencil (Raster)");
+}
+
+bool PencilTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
+    if (event->button() != Qt::LeftButton) return false;
+
+    // Пытаемся растрировать слой
+    if (ctx.controller && ctx.controller->tryRasterizeLayer()) {
+        m_is_drawing = true;
+        // Здесь в Этапе 2 мы начнем рисовать по QImage
+        qDebug() << "Layer is ready for raster drawing!";
+        return true;
+    }
+    return false;
+}
+
+bool PencilTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
+    if (m_is_drawing) {
+        // Здесь будет рисование линии в Этапе 2
+        return true;
+    }
+    return false;
+}
+
+bool PencilTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
+    if (m_is_drawing && event->button() == Qt::LeftButton) {
+        m_is_drawing = false;
+        // Здесь будет сохранение "грязного прямоугольника" в Undo-стек
         return true;
     }
     return false;

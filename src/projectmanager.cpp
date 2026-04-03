@@ -72,7 +72,8 @@ void ProjectManager::saveToJson(const QString& path) {
     if (!canvas) return;
 
     QJsonObject root;
-    root["version"] = 2; // Версия 2: используем f_params массив
+    root["version"] = 3; // Поднимаем версию из-за растра
+    root["ask_rasterize"] = m_selected_project->getAskRasterize();
 
     QJsonArray layersArr;
     for (Layer* l : canvas->getLayers()) {
@@ -81,6 +82,14 @@ void ProjectManager::saveToJson(const QString& path) {
         lObj["visible"] = l->isVisible();
         lObj["locked"] = l->isLocked();
         lObj["isFilter"] = l->isFilter();
+        lObj["isRasterized"] = l->isRasterized();
+
+        if (l->isRasterized()) {
+            QByteArray byteArray; QBuffer buffer(&byteArray);
+            buffer.open(QIODevice::WriteOnly);
+            l->getRasterImage().save(&buffer, "PNG");
+            lObj["raster_image"] = QString::fromLatin1(byteArray.toBase64());
+        }
 
         if (l->isFilter()) {
             FilterLayer* fl = static_cast<FilterLayer*>(l);
@@ -152,6 +161,10 @@ void ProjectManager::loadFromJson(const QString& path) {
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     if (!doc.isObject()) return;
 
+    if (m_selected_project) {
+        m_selected_project->setAskRasterize(doc.object()["ask_rasterize"].toBool(true));
+    }
+
     emit projectAboutToClose();
     canvas->clearCanvas();
 
@@ -159,6 +172,7 @@ void ProjectManager::loadFromJson(const QString& path) {
     for (int i = 0; i < layersArr.size(); ++i) {
         QJsonObject lObj = layersArr[i].toObject();
         bool isFilter = lObj["isFilter"].toBool(false);
+        bool isRasterized = lObj["isRasterized"].toBool(false);
         Layer* l = nullptr;
 
         if (isFilter) {
@@ -176,6 +190,16 @@ void ProjectManager::loadFromJson(const QString& path) {
             } else {
                 if (fs.params.size() > 0 && lObj.contains("f_p1")) fs.params[0] = lObj["f_p1"].toDouble();
                 if (fs.params.size() > 1 && lObj.contains("f_p2")) fs.params[1] = lObj["f_p2"].toDouble();
+            }
+
+            if (isRasterized) {
+                l->setRasterized(true);
+                if (lObj.contains("raster_image")) {
+                    QByteArray byteArray = QByteArray::fromBase64(lObj["raster_image"].toString().toLatin1());
+                    QImage img;
+                    img.loadFromData(byteArray, "PNG");
+                    l->setRasterImage(img);
+                }
             }
 
             fl->setFilterState(fs);

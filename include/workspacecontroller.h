@@ -14,8 +14,8 @@ class WorkspaceController : public QObject {
     Q_OBJECT
 public:
     explicit WorkspaceController(const WorkspaceContext& ctx, QObject* parent = nullptr);
-
     QUndoStack* getUndoStack() const { return m_undo_stack; }
+    bool tryRasterizeLayer();
 
 public slots:
     void setCurrentTool(InstrumentType type);

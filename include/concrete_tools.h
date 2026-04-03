@@ -94,4 +94,19 @@ private:
     TextObject* m_temp_text = nullptr;
 };
 
+// --- ИНСТРУМЕНТ "КАРАНДАШ" (PENCIL) ---
+class PencilTool : public Tool {
+    Q_OBJECT
+public:
+    explicit PencilTool(QObject* parent = nullptr) : Tool(parent) {}
+
+    void onActivate(const WorkspaceContext& ctx) override;
+    bool mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
+    bool mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
+    bool mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
+
+private:
+    bool m_is_drawing = false;
+};
+
 #endif // CONCRETE_TOOLS_H
