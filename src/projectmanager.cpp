@@ -72,7 +72,7 @@ void ProjectManager::saveToJson(const QString& path) {
     if (!canvas) return;
 
     QJsonObject root;
-    root["version"] = 1;
+    root["version"] = 2; // Версия 2: используем f_params массив
 
     QJsonArray layersArr;
     for (Layer* l : canvas->getLayers()) {
@@ -86,8 +86,10 @@ void ProjectManager::saveToJson(const QString& path) {
             FilterLayer* fl = static_cast<FilterLayer*>(l);
             FilterState s = fl->getFilterState();
             lObj["f_type"] = static_cast<int>(s.type);
-            lObj["f_p1"] = s.param1;
-            lObj["f_p2"] = s.param2;
+
+            QJsonArray paramsArr;
+            for (float p : s.params) paramsArr.append(p);
+            lObj["f_params"] = paramsArr;
         }
 
         QJsonArray objsArr;
@@ -161,10 +163,21 @@ void ProjectManager::loadFromJson(const QString& path) {
 
         if (isFilter) {
             FilterLayer* fl = new FilterLayer(lObj["name"].toString());
-            FilterState fs;
-            fs.type = static_cast<FilterType>(lObj["f_type"].toInt(0));
-            fs.param1 = lObj["f_p1"].toDouble(0);
-            fs.param2 = lObj["f_p2"].toDouble(0);
+            FilterType fType = static_cast<FilterType>(lObj["f_type"].toInt(0));
+
+            FilterState fs = FilterFactory::getDefaultState(fType);
+
+            // Обратная совместимость с версией 1 (где были жестко f_p1 и f_p2)
+            if (lObj.contains("f_params")) {
+                QJsonArray pArr = lObj["f_params"].toArray();
+                for (int pIdx = 0; pIdx < pArr.size() && pIdx < (int)fs.params.size(); ++pIdx) {
+                    fs.params[pIdx] = pArr[pIdx].toDouble();
+                }
+            } else {
+                if (fs.params.size() > 0 && lObj.contains("f_p1")) fs.params[0] = lObj["f_p1"].toDouble();
+                if (fs.params.size() > 1 && lObj.contains("f_p2")) fs.params[1] = lObj["f_p2"].toDouble();
+            }
+
             fl->setFilterState(fs);
             l = fl;
         } else {
