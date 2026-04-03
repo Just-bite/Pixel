@@ -45,7 +45,8 @@ private slots:
     void onColorFillClicked();
     void onColorStrokeClicked();
     void onAnyUIChanged();
-    void onFilterUIChanged();
+    void onFilterTypeChanged();
+    void onFilterParamChanged();
     void onMoveUpClicked();
     void onMoveDownClicked();
 
@@ -78,10 +79,13 @@ private:
 
     QGroupBox *m_filter_group;
     QComboBox *m_filter_type_box;
-    QDoubleSpinBox *m_filter_param1, *m_filter_param2;
+    QWidget *m_filter_params_container;
+    QHBoxLayout *m_filter_params_layout;
+
     FilterLayer* m_current_filter_target = nullptr;
-    QLabel *m_lbl_filter_p1, *m_lbl_filter_p2;
-    void updateFilterUIRanges();
+    std::vector<QDoubleSpinBox*> m_filter_param_boxes;
+
+    void rebuildFilterParamsUI(FilterType type);
 };
 
 #endif // CONTEXTPANNEL_H

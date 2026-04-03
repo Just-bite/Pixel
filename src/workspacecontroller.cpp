@@ -310,7 +310,6 @@ void WorkspaceController::onContextPropertyChanged() {
         }
     }
 
-    // Сообщаем активному инструменту, что объект изменен извне (чтобы он подтянул рамку)
     if (m_active_tool) m_active_tool->onObjectModified(m_context);
 }
 

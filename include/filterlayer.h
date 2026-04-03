@@ -2,20 +2,8 @@
 #define FILTERLAYER_H
 
 #include "layer.h"
+#include "filter.h"
 #include <QImage>
-
-enum class FilterType { None, Grayscale, Invert, BrightnessContrast, Blur };
-
-struct FilterState {
-    FilterType type = FilterType::Grayscale;
-    float param1 = 0.0f;
-    float param2 = 0.0f;
-
-    bool operator==(const FilterState& o) const {
-        return type == o.type && qAbs(param1 - o.param1) < 0.01f && qAbs(param2 - o.param2) < 0.01f;
-    }
-    bool operator!=(const FilterState& o) const { return !(*this == o); }
-};
 
 class FilterLayer : public Layer {
     Q_OBJECT
@@ -34,6 +22,7 @@ public:
 
 private:
     FilterState m_filter_state;
+    std::unique_ptr<BaseFilter> m_filter;
     QImage m_cached_image;
     QImage m_rendered_image;
 

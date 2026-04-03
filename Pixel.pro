@@ -20,6 +20,7 @@ SOURCES += \
     src/canvas.cpp \
     src/concrete_tools.cpp \
     src/contextpannel.cpp \
+    src/filter.cpp \
     src/filterlayer.cpp \
     src/infopannel.cpp \
     src/instrumentpannel.cpp \
@@ -40,6 +41,7 @@ HEADERS += \
     include/canvas.h \
     include/concrete_tools.h \
     include/contextpannel.h \
+    include/filter.h \
     include/filterlayer.h \
     include/infopannel.h \
     include/layer.h \

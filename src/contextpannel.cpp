@@ -9,7 +9,6 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
 
     m_lbl_placeholder = new QLabel("Tool selected.", this);
     m_lbl_placeholder->setAlignment(Qt::AlignCenter);
-
     m_lbl_placeholder->setStyleSheet("border: none; background: transparent; font-size: 14px; color: #aaaaaa;");
 
     m_geometry_group = new QGroupBox("Transform", this);
@@ -49,12 +48,7 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_font_size_box = createSpinBox(1, 500);
     addLabeledWidget(text_layout, "Font:", m_font_box);
     addLabeledWidget(text_layout, "Size:", m_font_size_box);
-    main_layout->addWidget(m_text_group);
 
-    m_default_text_state.color = Qt::black;
-    m_default_text_state.font = QFont("Arial", 16);
-
-    // Убираем QGroupBox (рамку), делаем просто QWidget
     m_layer_group = new QWidget(this);
     QHBoxLayout* layer_layout = new QHBoxLayout(m_layer_group);
     layer_layout->setContentsMargins(5, 10, 5, 5);
@@ -74,25 +68,25 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_filter_type_box->addItem("None", static_cast<int>(FilterType::None));
     m_filter_type_box->addItem("Grayscale", static_cast<int>(FilterType::Grayscale));
     m_filter_type_box->addItem("Invert", static_cast<int>(FilterType::Invert));
-    m_filter_type_box->addItem("Brightness/Contrast", static_cast<int>(FilterType::BrightnessContrast));
+    m_filter_type_box->addItem("Brightness / Contrast", static_cast<int>(FilterType::BrightnessContrast));
     m_filter_type_box->addItem("Blur", static_cast<int>(FilterType::Blur));
+    m_filter_type_box->addItem("Threshold", static_cast<int>(FilterType::Threshold));
+    m_filter_type_box->addItem("Sharpen", static_cast<int>(FilterType::Sharpen));
+    m_filter_type_box->addItem("HSL Color", static_cast<int>(FilterType::HSL));
 
-    m_filter_param1 = createSpinBox(-100, 100);
-    m_filter_param2 = createSpinBox(-100, 100);
+    filter_layout->addWidget(new QLabel("Type:", this));
+    filter_layout->addWidget(m_filter_type_box);
 
-    m_lbl_filter_p1 = new QLabel("P1:", this);
-    m_lbl_filter_p2 = new QLabel("P2:", this);
-
-    filter_layout->addWidget(new QLabel("Type:", this)); filter_layout->addWidget(m_filter_type_box);
-    filter_layout->addWidget(m_lbl_filter_p1); filter_layout->addWidget(m_filter_param1);
-    filter_layout->addWidget(m_lbl_filter_p2); filter_layout->addWidget(m_filter_param2);
-
-
+    m_filter_params_container = new QWidget(this);
+    m_filter_params_layout = new QHBoxLayout(m_filter_params_container);
+    m_filter_params_layout->setContentsMargins(0, 0, 0, 0);
+    filter_layout->addWidget(m_filter_params_container);
 
     main_layout->addWidget(m_lbl_placeholder);
     main_layout->addWidget(m_geometry_group);
     main_layout->addWidget(m_style_group);
     main_layout->addWidget(m_layer_group);
+    main_layout->addWidget(m_text_group);
     main_layout->addWidget(m_filter_group);
     main_layout->addStretch();
 
@@ -120,9 +114,8 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     connect(m_thick_box, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onAnyUIChanged);
     connect(m_font_box, &QFontComboBox::currentFontChanged, this, &ContextPannel::onAnyUIChanged);
     connect(m_font_size_box, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onAnyUIChanged);
-    connect(m_filter_type_box, comboSignal, this, &ContextPannel::onFilterUIChanged);
-    connect(m_filter_param1, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onFilterUIChanged);
-    connect(m_filter_param2, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onFilterUIChanged);
+
+    connect(m_filter_type_box, comboSignal, this, &ContextPannel::onFilterTypeChanged);
 
     setMode(false, false, false, false, "Pointer");
 }
@@ -138,9 +131,9 @@ QDoubleSpinBox* ContextPannel::createSpinBox(double min, double max) {
 }
 
 void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, const QString& toolName) {
-    bool isFilterSel = (m_current_filter_target != nullptr); // <--- Добавили эту строку
+    bool isFilterSel = (m_current_filter_target != nullptr);
     bool isImgSel = (m_current_image_target != nullptr);
-    bool somethingSelected = isFigSel || isTextSel || isImgSel || isFilterSel; // <--- Обновили условие
+    bool somethingSelected = isFigSel || isTextSel || isImgSel || isFilterSel;
 
     m_lbl_placeholder->setVisible(!somethingSelected && !isFigTool && !isTextTool);
     if (!toolName.isEmpty()) m_lbl_placeholder->setText(QString("Tool: %1. No specific settings.").arg(toolName));
@@ -186,7 +179,6 @@ void ContextPannel::setTarget(Figure* figure) {
 void ContextPannel::setTarget(TextObject* textObj) {
     m_current_target = nullptr; m_current_text_target = textObj;
     m_current_image_target = nullptr; m_current_filter_target = nullptr;
-
     if (!textObj) return;
     blockSignals(true);
     TextState s = textObj->getState();
@@ -219,16 +211,54 @@ void ContextPannel::setTarget(FilterLayer* filterObj) {
     blockSignals(true);
     FilterState s = filterObj->getFilterState();
     m_filter_type_box->setCurrentIndex(m_filter_type_box->findData(static_cast<int>(s.type)));
-    m_filter_param1->setValue(s.param1);
-    m_filter_param2->setValue(s.param2);
-    updateFilterUIRanges();
+    rebuildFilterParamsUI(s.type);
+
+    // Заполняем созданные ползунки значениями
+    for (size_t i = 0; i < m_filter_param_boxes.size() && i < s.params.size(); ++i) {
+        m_filter_param_boxes[i]->setValue(s.params[i]);
+    }
     blockSignals(false);
 }
 
-void ContextPannel::onFilterUIChanged() {
-    updateFilterUIRanges();
-    if (m_current_filter_target)
-        emit propertyChanged();
+void ContextPannel::rebuildFilterParamsUI(FilterType type) {
+    // Очищаем старые параметры
+    QLayoutItem *child;
+    while ((child = m_filter_params_layout->takeAt(0)) != nullptr) {
+        if (child->widget()) child->widget()->deleteLater();
+        delete child;
+    }
+    m_filter_param_boxes.clear();
+
+    // Создаем новые
+    std::vector<FilterParamInfo> infos = FilterFactory::getParamInfo(type);
+    for (const auto& info : infos) {
+        m_filter_params_layout->addWidget(new QLabel(info.name + ":", this));
+        QDoubleSpinBox* spin = createSpinBox(info.minVal, info.maxVal);
+        spin->setValue(info.defaultVal);
+        m_filter_params_layout->addWidget(spin);
+        m_filter_param_boxes.push_back(spin);
+
+        connect(spin, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onFilterParamChanged);
+    }
+}
+
+void ContextPannel::onFilterTypeChanged() {
+    FilterType type = static_cast<FilterType>(m_filter_type_box->currentData().toInt());
+    rebuildFilterParamsUI(type);
+    if (m_current_filter_target) emit propertyChanged();
+}
+
+void ContextPannel::onFilterParamChanged() {
+    if (m_current_filter_target) emit propertyChanged();
+}
+
+FilterState ContextPannel::getUIFilterState() const {
+    FilterState s;
+    s.type = static_cast<FilterType>(m_filter_type_box->currentData().toInt());
+    for (QDoubleSpinBox* box : m_filter_param_boxes) {
+        s.params.push_back(box->value());
+    }
+    return s;
 }
 
 TextState ContextPannel::getUITextState(const TextState& baseState) const {
@@ -257,43 +287,13 @@ ImageState ContextPannel::getUIImageState(const ImageState& baseState) const {
     return s;
 }
 
-FilterState ContextPannel::getUIFilterState() const {
-    FilterState s;
-    s.type = static_cast<FilterType>(m_filter_type_box->currentData().toInt());
-    s.param1 = m_filter_param1->value();
-    s.param2 = m_filter_param2->value();
-    return s;
-}
-
-void ContextPannel::updateFilterUIRanges() {
-    FilterType type = static_cast<FilterType>(m_filter_type_box->currentData().toInt());
-
-    if (type == FilterType::Blur) {
-        m_lbl_filter_p1->setText("Radius:"); m_lbl_filter_p1->show();
-        m_filter_param1->setRange(0, 50);    m_filter_param1->show();
-        m_lbl_filter_p2->hide();             m_filter_param2->hide();
-    } else if (type == FilterType::BrightnessContrast) {
-        m_lbl_filter_p1->setText("Bright:"); m_lbl_filter_p1->show();
-        m_filter_param1->setRange(-100, 100);m_filter_param1->show();
-        m_lbl_filter_p2->setText("Contr:");  m_lbl_filter_p2->show();
-        m_filter_param2->setRange(-100, 100);m_filter_param2->show();
-    } else {
-        m_lbl_filter_p1->hide(); m_filter_param1->hide();
-        m_lbl_filter_p2->hide(); m_filter_param2->hide();
-    }
-}
-
 void ContextPannel::setDefaultColor(bool isFill, const QColor& color) {
-    if (isFill)
-        m_default_state.fill = color;
-    else
-        m_default_state.stroke = color;
+    if (isFill) m_default_state.fill = color; else m_default_state.stroke = color;
     updateColorButtonsUI();
 }
 
 QColor ContextPannel::getActiveColor() const {
-    if (m_current_text_target)
-        return m_current_text_target->getState().color;
+    if (m_current_text_target) return m_current_text_target->getState().color;
     FigureState s = m_current_target ? m_current_target->getState() : m_default_state;
     return m_active_is_fill ? s.fill : s.stroke;
 }
@@ -301,8 +301,7 @@ QColor ContextPannel::getActiveColor() const {
 void ContextPannel::updateColorButtonsUI() {
     FigureState s = m_current_target ? m_current_target->getState() : m_default_state;
     auto getContrastBorder = [](const QColor& c) {
-        double luminance = (0.2126 * c.red() + 0.7152 * c.green() + 0.0722 * c.blue());
-        return luminance > 128 ? "black" : "white";
+        return (0.2126 * c.red() + 0.7152 * c.green() + 0.0722 * c.blue()) > 128 ? "black" : "white";
     };
 
     QString fillBorder = m_active_is_fill ? QString("border: 2px solid %1;").arg(getContrastBorder(s.fill)) : "border: 1px solid #555;";
@@ -312,25 +311,12 @@ void ContextPannel::updateColorButtonsUI() {
     m_btn_stroke_color->setStyleSheet(QString("background-color: %1; %2").arg(s.stroke.name(QColor::HexArgb)).arg(strokeBorder));
 }
 
-void ContextPannel::onColorFillClicked() {
-    m_active_is_fill = true;
-    updateColorButtonsUI();
-    emit colorTargetActivated(true);
-}
-void ContextPannel::onColorStrokeClicked() {
-    m_active_is_fill = false;
-    updateColorButtonsUI();
-    emit colorTargetActivated(false);
-}
-void ContextPannel::onMoveUpClicked() {
-    emit moveObjectLayerRequested(1);
-}
-void ContextPannel::onMoveDownClicked() {
-    emit moveObjectLayerRequested(-1);
-}
+void ContextPannel::onColorFillClicked() { m_active_is_fill = true; updateColorButtonsUI(); emit colorTargetActivated(true); }
+void ContextPannel::onColorStrokeClicked() { m_active_is_fill = false; updateColorButtonsUI(); emit colorTargetActivated(false); }
+void ContextPannel::onMoveUpClicked() { emit moveObjectLayerRequested(1); }
+void ContextPannel::onMoveDownClicked() { emit moveObjectLayerRequested(-1); }
 void ContextPannel::onAnyUIChanged() {
-    if (m_current_target || m_current_text_target || m_current_image_target)
-        emit propertyChanged();
+    if (m_current_target || m_current_text_target || m_current_image_target) emit propertyChanged();
     else {
         m_default_state.type = static_cast<FigureType>(m_type_box->currentData().toInt());
         m_default_state.thickness = m_thick_box->value();
