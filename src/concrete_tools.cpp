@@ -395,14 +395,14 @@ bool TextTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx
 void PencilTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::CrossCursor);
     ctx.contextPannel->setMode(false, false, false, false, true, "Pencil");
-    // При активации инструмент "восстанавливает" свои настройки в UI
-    ctx.contextPannel->setRasterSettings(m_radius, m_density);
+    ctx.contextPannel->setRasterSettings(m_radius, m_density, m_hardness); // Добавили hardness
     ctx.palettePannel->setColor(m_color);
 }
 
 void PencilTool::onRasterSettingsChanged(const WorkspaceContext& ctx) {
     m_radius = ctx.contextPannel->getRasterRadius();
     m_density = ctx.contextPannel->getRasterDensity();
+    m_hardness = ctx.contextPannel->getRasterHardness(); // Добавили
 }
 
 void PencilTool::onColorChanged(const QColor& color, const WorkspaceContext& ctx) {
@@ -410,12 +410,20 @@ void PencilTool::onColorChanged(const QColor& color, const WorkspaceContext& ctx
 }
 
 void PencilTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density, const QColor& color) {
+    bool pixelPerfect = (m_hardness >= 100 && radius == 1);
+    p.setRenderHint(QPainter::Antialiasing, !pixelPerfect);
+
     if (density >= 100) {
-        // Обычная сплошная линия
-        p.setPen(QPen(color, radius, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        p.drawLine(p1, p2);
+        if (pixelPerfect) {
+            // ИСПРАВЛЕНИЕ: Идеальная 1px линия без плавания
+            p.setPen(QPen(color, 1, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin)); // SquareCap решает проблему!
+            p.drawLine(p1.toPoint(), p2.toPoint());
+        } else {
+            p.setPen(QPen(color, radius, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+            p.drawLine(p1, p2);
+        }
     } else {
-        // Режим спрея
+        // Режим спрея (без изменений)
         p.setPen(Qt::NoPen);
         p.setBrush(color);
         int steps = qMax(1.0, QLineF(p1, p2).length());
@@ -424,7 +432,6 @@ void PencilTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, i
             qreal t = (qreal)i / steps;
             QPointF pt = p1 + (p2 - p1) * t;
 
-            // Количество точек зависит от плотности и радиуса
             int dotsToDraw = (radius * density) / 50;
             if (dotsToDraw < 1) dotsToDraw = 1;
 
@@ -444,39 +451,44 @@ bool PencilTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx
     if (event->button() != Qt::LeftButton) return false;
 
     RasterizeResult res = ctx.controller->prepareRasterLayer();
-    // Если юзер нажал Отмену ИЛИ если мы только что растрировали через окно — прерываем мазок!
     if (res == RasterizeResult::Cancelled || res == RasterizeResult::RasterizedNow) return false;
 
     m_active_layer = ctx.projectManager->GetCurrentCanvas()->getLayers()[ctx.projectManager->GetCurrentCanvas()->getSelectedLayerid()];
+
+    // Сохраняем временную полную копию только на время мазка
     m_image_before_stroke = *m_active_layer->getRasterImagePtr();
 
     m_is_drawing = true;
-    m_last_pos = ctx.view->mapToScene(event->pos());
+    QPointF scenePos = ctx.view->mapToScene(event->pos());
+    m_last_pos = QPoint(qFloor(scenePos.x()), qFloor(scenePos.y()));
+
+    // Инициализируем грязный прямоугольник (с небольшим запасом)
+    m_dirty_rect = QRect(m_last_pos.x() - m_radius - 2, m_last_pos.y() - m_radius - 2, m_radius * 2 + 4, m_radius * 2 + 4);
 
     QPainter p(m_active_layer->getRasterImagePtr());
-    p.setRenderHint(QPainter::Antialiasing);
     drawStroke(p, m_last_pos, m_last_pos, m_radius, m_density, m_color);
 
-    m_active_layer->updateRasterArea(QRectF(m_last_pos.x() - m_radius, m_last_pos.y() - m_radius, m_radius*2, m_radius*2));
+    m_active_layer->updateRasterArea(m_dirty_rect);
     return true;
 }
 
 bool PencilTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
-    // ЗАЩИТА: Если мышь отпущена, но Qt поймал глюк фокуса — сбрасываем рисование
     if (!(event->buttons() & Qt::LeftButton)) {
-        m_is_drawing = false;
-        return false;
+        m_is_drawing = false; return false;
     }
 
     if (m_is_drawing && m_active_layer) {
-        QPointF current_pos = ctx.view->mapToScene(event->pos());
+        QPointF scenePos = ctx.view->mapToScene(event->pos());
+        QPoint current_pos = QPoint(qFloor(scenePos.x()), qFloor(scenePos.y()));
+
         QPainter p(m_active_layer->getRasterImagePtr());
-        p.setRenderHint(QPainter::Antialiasing);
         drawStroke(p, m_last_pos, current_pos, m_radius, m_density, m_color);
 
-        QRectF updateRect = QRectF(m_last_pos, current_pos).normalized().adjusted(-m_radius, -m_radius, m_radius, m_radius);
-        m_active_layer->updateRasterArea(updateRect);
+        // Расширяем грязный прямоугольник
+        QRect updateRect(current_pos.x() - m_radius - 2, current_pos.y() - m_radius - 2, m_radius * 2 + 4, m_radius * 2 + 4);
+        m_dirty_rect = m_dirty_rect.united(updateRect);
 
+        m_active_layer->updateRasterArea(updateRect);
         m_last_pos = current_pos;
         return true;
     }
@@ -486,30 +498,42 @@ bool PencilTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx)
 bool PencilTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
     if (m_is_drawing && event->button() == Qt::LeftButton) {
         m_is_drawing = false;
-        // Сохраняем команду в стек (пока целиком, оптимизируем память в этапе 3)
-        ctx.undoStack->push(new RasterStrokeCommand(m_active_layer, m_image_before_stroke, *m_active_layer->getRasterImagePtr()));
+
+        // Ограничиваем рамку размером холста
+        m_dirty_rect = m_dirty_rect.intersected(m_active_layer->getRasterImagePtr()->rect());
+
+        if (!m_dirty_rect.isEmpty()) {
+            // Вырезаем только маленькие дельты!
+            QImage oldSub = m_image_before_stroke.copy(m_dirty_rect);
+            QImage newSub = m_active_layer->getRasterImagePtr()->copy(m_dirty_rect);
+
+            ctx.undoStack->push(new RasterStrokeCommand(m_active_layer, m_dirty_rect, oldSub, newSub));
+        }
+
+        m_image_before_stroke = QImage(); // Очищаем гигантскую времянку из памяти
         m_active_layer = nullptr;
         return true;
     }
     return false;
 }
 
+
 // ==================== ERASER TOOL ====================
 void EraserTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::CrossCursor);
     ctx.contextPannel->setMode(false, false, false, false, true, "Eraser");
-    // Ластику нужен только размер и плотность
-    ctx.contextPannel->setRasterSettings(m_radius, m_density);
+    ctx.contextPannel->setRasterSettings(m_radius, m_density, m_hardness);
 }
 
 void EraserTool::onRasterSettingsChanged(const WorkspaceContext& ctx) {
     m_radius = ctx.contextPannel->getRasterRadius();
     m_density = ctx.contextPannel->getRasterDensity();
+    m_hardness = ctx.contextPannel->getRasterHardness();
 }
 
 void EraserTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density) {
-    // ВАЖНО: Режим "очистки" стирает пиксели в альфа-канал
     p.setCompositionMode(QPainter::CompositionMode_Clear);
+    p.setRenderHint(QPainter::Antialiasing, m_hardness < 100 && radius > 1); // То же самое для ластика
 
     if (density >= 100) {
         p.setPen(QPen(Qt::transparent, radius, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
@@ -518,14 +542,11 @@ void EraserTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, i
         p.setPen(Qt::NoPen);
         p.setBrush(Qt::transparent);
         int steps = qMax(1.0, QLineF(p1, p2).length());
-
         for (int i = 0; i <= steps; ++i) {
             qreal t = (qreal)i / steps;
             QPointF pt = p1 + (p2 - p1) * t;
-
             int dotsToDraw = (radius * density) / 50;
             if (dotsToDraw < 1) dotsToDraw = 1;
-
             for (int d = 0; d < dotsToDraw; ++d) {
                 if ((rand() % 100) < density) {
                     qreal angle = (rand() % 360) * M_PI / 180.0;
@@ -540,7 +561,6 @@ void EraserTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, i
 
 bool EraserTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
     if (event->button() != Qt::LeftButton) return false;
-
     RasterizeResult res = ctx.controller->prepareRasterLayer();
     if (res == RasterizeResult::Cancelled || res == RasterizeResult::RasterizedNow) return false;
 
@@ -548,31 +568,26 @@ bool EraserTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx
     m_image_before_stroke = *m_active_layer->getRasterImagePtr();
 
     m_is_drawing = true;
-    m_last_pos = ctx.view->mapToScene(event->pos());
+    m_last_pos = ctx.view->mapToScene(event->pos()).toPoint();
+    m_dirty_rect = QRect(m_last_pos.x() - m_radius - 2, m_last_pos.y() - m_radius - 2, m_radius * 2 + 4, m_radius * 2 + 4);
 
     QPainter p(m_active_layer->getRasterImagePtr());
-    p.setRenderHint(QPainter::Antialiasing);
     drawStroke(p, m_last_pos, m_last_pos, m_radius, m_density);
-
-    m_active_layer->updateRasterArea(QRectF(m_last_pos.x() - m_radius, m_last_pos.y() - m_radius, m_radius*2, m_radius*2));
+    m_active_layer->updateRasterArea(m_dirty_rect);
     return true;
 }
 
 bool EraserTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
-    if (!(event->buttons() & Qt::LeftButton)) {
-        m_is_drawing = false;
-        return false;
-    }
-
+    if (!(event->buttons() & Qt::LeftButton)) { m_is_drawing = false; return false; }
     if (m_is_drawing && m_active_layer) {
-        QPointF current_pos = ctx.view->mapToScene(event->pos());
+        QPoint current_pos = ctx.view->mapToScene(event->pos()).toPoint();
         QPainter p(m_active_layer->getRasterImagePtr());
-        p.setRenderHint(QPainter::Antialiasing);
         drawStroke(p, m_last_pos, current_pos, m_radius, m_density);
 
-        QRectF updateRect = QRectF(m_last_pos, current_pos).normalized().adjusted(-m_radius, -m_radius, m_radius, m_radius);
-        m_active_layer->updateRasterArea(updateRect);
+        QRect updateRect(current_pos.x() - m_radius - 2, current_pos.y() - m_radius - 2, m_radius * 2 + 4, m_radius * 2 + 4);
+        m_dirty_rect = m_dirty_rect.united(updateRect);
 
+        m_active_layer->updateRasterArea(updateRect);
         m_last_pos = current_pos;
         return true;
     }
@@ -582,7 +597,13 @@ bool EraserTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx)
 bool EraserTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
     if (m_is_drawing && event->button() == Qt::LeftButton) {
         m_is_drawing = false;
-        ctx.undoStack->push(new RasterStrokeCommand(m_active_layer, m_image_before_stroke, *m_active_layer->getRasterImagePtr()));
+        m_dirty_rect = m_dirty_rect.intersected(m_active_layer->getRasterImagePtr()->rect());
+        if (!m_dirty_rect.isEmpty()) {
+            QImage oldSub = m_image_before_stroke.copy(m_dirty_rect);
+            QImage newSub = m_active_layer->getRasterImagePtr()->copy(m_dirty_rect);
+            ctx.undoStack->push(new RasterStrokeCommand(m_active_layer, m_dirty_rect, oldSub, newSub));
+        }
+        m_image_before_stroke = QImage();
         m_active_layer = nullptr;
         return true;
     }

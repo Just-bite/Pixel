@@ -406,7 +406,8 @@ RasterizeResult WorkspaceController::prepareRasterLayer() {
     // Сценарий 2: Слой абсолютно пустой (новый) -> Молча растрируем и Рисуем
     if (!layer->isRasterized() && !hasVectors) {
         m_undo_stack->push(new RasterizeLayerCommand(canvas, activeId));
-        return RasterizeResult::Ready;
+        // ИСПРАВЛЕНИЕ: Возвращаем RasterizedNow, чтобы заблокировать первый мазок!
+        return RasterizeResult::RasterizedNow;
     }
 
     // Сценарий 3: На слое есть векторы. Спрашиваем.

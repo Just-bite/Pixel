@@ -114,10 +114,12 @@ private:
 
     bool m_is_drawing = false;
     Layer* m_active_layer = nullptr;
-    QPointF m_last_pos;
+    QPoint m_last_pos;
     QImage m_image_before_stroke;
     int m_radius = 10;
     int m_density = 100;
+    int m_hardness = 100;
+    QRect m_dirty_rect;
     QColor m_color = Qt::black;
 };
 
@@ -139,10 +141,12 @@ private:
 
     bool m_is_drawing = false;
     Layer* m_active_layer = nullptr;
-    QPointF m_last_pos;
+    QPoint m_last_pos;
     QImage m_image_before_stroke;
     int m_radius = 20;
     int m_density = 100;
+    int m_hardness = 100;
+    QRect m_dirty_rect;
 };
 
 #endif // CONCRETE_TOOLS_H

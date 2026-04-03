@@ -48,6 +48,8 @@ public:
 
     QSize getSize() const { return m_canvas_size; }
     void renameLayer(int id, const QString& new_name);
+    QGraphicsRectItem* getBgItem() const { return m_bg_item; }
+
 private:
     std::vector<Layer*> m_layers;
     QGraphicsScene* m_parent_sceene;

@@ -224,12 +224,15 @@ QImage Canvas::renderLayerToImage(int id) {
         }
     }
 
+    if (m_bg_item) m_bg_item->setVisible(false);
     // Сохраняем видимость слоев и прячем все кроме нужного
     std::vector<bool> visibility(m_layers.size());
     for (size_t i = 0; i < m_layers.size(); ++i) {
         visibility[i] = m_layers[i]->isVisible();
         m_layers[i]->setVisible((int)i == id);
     }
+
+
 
     // Рендерим
     QImage buffer(m_canvas_size, QImage::Format_ARGB32_Premultiplied);
@@ -242,6 +245,7 @@ QImage Canvas::renderLayerToImage(int id) {
                             QRectF(0, 0, m_canvas_size.width(), m_canvas_size.height()));
     p.end();
 
+    if (m_bg_item) m_bg_item->setVisible(true);
     // Восстанавливаем видимость слоев
     for (size_t i = 0; i < m_layers.size(); ++i) {
         m_layers[i]->setVisible(visibility[i]);

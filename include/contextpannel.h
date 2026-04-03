@@ -37,10 +37,11 @@ public:
 
     QColor getActiveColor() const;
 
-    void setRasterSettings(int radius, int density);
+    void setRasterSettings(int radius, int density, int hardness);
 
     int getRasterRadius() const { return m_raster_radius->value(); }
     int getRasterDensity() const { return m_raster_density->value(); }
+    int getRasterHardness() const { return m_raster_hardness->value(); }
 
 signals:
     void propertyChanged();
@@ -96,6 +97,7 @@ private:
     QGroupBox *m_raster_group;
     QSpinBox *m_raster_radius;
     QSpinBox *m_raster_density;
+    QSpinBox *m_raster_hardness;
 
     void rebuildFilterParamsUI(FilterType type);
 };

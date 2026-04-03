@@ -10,6 +10,7 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_lbl_placeholder = new QLabel("Tool selected.", this);
     m_lbl_placeholder->setAlignment(Qt::AlignCenter);
     m_lbl_placeholder->setStyleSheet("border: none; background: transparent; font-size: 14px; color: #aaaaaa;");
+    m_lbl_placeholder->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     m_geometry_group = new QGroupBox("Transform", this);
     QHBoxLayout* geom_layout = new QHBoxLayout(m_geometry_group);
@@ -71,8 +72,13 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_raster_density->setRange(1, 100);
     m_raster_density->setValue(100);
 
+    m_raster_hardness = new QSpinBox(this);
+    m_raster_hardness->setRange(1, 100);
+    m_raster_hardness->setValue(100);
+
     addLabeledWidget(raster_layout, "Radius:", m_raster_radius);
     addLabeledWidget(raster_layout, "Density %:", m_raster_density);
+    addLabeledWidget(raster_layout, "Hardness %:", m_raster_hardness);
 
     // --- Группа Фильтра ---
     m_filter_group = new QGroupBox("Filter", this);
@@ -135,6 +141,7 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     connect(m_font_size_box, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onAnyUIChanged);
     connect(m_raster_radius, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &ContextPannel::onAnyUIChanged);
     connect(m_raster_density, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &ContextPannel::onAnyUIChanged);
+    connect(m_raster_hardness, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &ContextPannel::onAnyUIChanged);
 
     connect(m_filter_type_box, comboSignal, this, &ContextPannel::onFilterTypeChanged);
 
@@ -340,10 +347,11 @@ void ContextPannel::updateColorButtonsUI() {
     m_btn_stroke_color->setStyleSheet(QString("background-color: %1; %2").arg(s.stroke.name(QColor::HexArgb)).arg(strokeBorder));
 }
 
-void ContextPannel::setRasterSettings(int radius, int density) {
+void ContextPannel::setRasterSettings(int radius, int density, int hardness) {
     blockSignals(true);
     m_raster_radius->setValue(radius);
     m_raster_density->setValue(density);
+    m_raster_hardness->setValue(hardness);
     blockSignals(false);
 }
 

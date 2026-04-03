@@ -115,6 +115,7 @@ MainWindow::MainWindow(QWidget *parent)
     updateInfoPanel();
     createMenuBar();
     QTimer::singleShot(0, this, &MainWindow::onFitToScreen);
+    m_workspace_controller->setCurrentTool(InstrumentType::POINTER);
 }
 
 

@@ -5,8 +5,12 @@ RasterizeLayerCommand::RasterizeLayerCommand(Canvas* canvas, int layerId, QUndoC
 {
     Layer* layer = m_canvas->getLayers()[m_layer_id];
 
-    // Сохраняем объекты, которые будем "запекать"
-    m_objects = layer->getObjects();
+    // Копируем сырые указатели в умные (QPointer)
+    std::vector<Object*> raw_objects = layer->getObjects();
+    m_objects.reserve(raw_objects.size());
+    for (Object* obj : raw_objects) {
+        m_objects.push_back(QPointer<Object>(obj));
+    }
 
     // Запоминаем предыдущее состояние слоя
     m_was_rasterized = layer->isRasterized();
@@ -17,26 +21,21 @@ RasterizeLayerCommand::RasterizeLayerCommand(Canvas* canvas, int layerId, QUndoC
 }
 
 RasterizeLayerCommand::~RasterizeLayerCommand() {
-    // Если команда уничтожается (лимит стека Undo), и она сейчас применена,
-    // значит векторные объекты больше никогда не понадобятся. Удаляем их из памяти.
     if (m_is_active) {
-        for (Object* obj : m_objects) {
-            delete obj;
+        for (auto& obj : m_objects) {
+            if (obj) delete obj; // <--- Проверяем, жив ли объект
         }
     }
 }
 
 void RasterizeLayerCommand::redo() {
     Layer* layer = m_canvas->getLayers()[m_layer_id];
-
-    // Убираем векторные объекты И со слоя, И со сцены!
-    for (Object* obj : m_objects) {
-        layer->removeObject(obj);
-        if (m_canvas->getScene()) {
-            m_canvas->getScene()->removeItem(obj);
+    for (auto& obj : m_objects) {
+        if (obj) { // <--- Проверяем
+            layer->removeObject(obj);
+            if (m_canvas->getScene()) m_canvas->getScene()->removeItem(obj);
         }
     }
-
     layer->setRasterized(true);
     layer->setRasterImage(m_new_raster_image);
     m_is_active = true;
@@ -44,28 +43,32 @@ void RasterizeLayerCommand::redo() {
 
 void RasterizeLayerCommand::undo() {
     Layer* layer = m_canvas->getLayers()[m_layer_id];
-
-    // Возвращаем слой к предыдущему состоянию
     layer->setRasterized(m_was_rasterized);
     layer->setRasterImage(m_old_raster_image);
 
-    // Возвращаем векторы на слой И на сцену
-    for (Object* obj : m_objects) {
-        if (m_canvas->getScene()) {
-            m_canvas->getScene()->addItem(obj);
+    for (auto& obj : m_objects) {
+        if (obj) { // <--- Проверяем
+            if (m_canvas->getScene()) m_canvas->getScene()->addItem(obj);
+            layer->addObject(obj);
         }
-        layer->addObject(obj);
     }
     m_is_active = false;
 }
 
-RasterStrokeCommand::RasterStrokeCommand(Layer* layer, const QImage& oldImg, const QImage& newImg, QUndoCommand *parent)
-    : QUndoCommand(parent), m_layer(layer), m_old_image(oldImg), m_new_image(newImg) {}
+RasterStrokeCommand::RasterStrokeCommand(Layer* layer, const QRect& rect, const QImage& oldSubImg, const QImage& newSubImg, QUndoCommand *parent)
+    : QUndoCommand(parent), m_layer(layer), m_rect(rect), m_old_image(oldSubImg), m_new_image(newSubImg) {}
 
 void RasterStrokeCommand::undo() {
-    m_layer->setRasterImage(m_old_image);
+    QPainter p(m_layer->getRasterImagePtr());
+    // ВАЖНО: Режим Source заменяет пиксели 1-в-1 (включая прозрачность), а не накладывает их поверх!
+    p.setCompositionMode(QPainter::CompositionMode_Source);
+    p.drawImage(m_rect.topLeft(), m_old_image);
+    m_layer->updateRasterArea(m_rect);
 }
 
 void RasterStrokeCommand::redo() {
-    m_layer->setRasterImage(m_new_image);
+    QPainter p(m_layer->getRasterImagePtr());
+    p.setCompositionMode(QPainter::CompositionMode_Source);
+    p.drawImage(m_rect.topLeft(), m_new_image);
+    m_layer->updateRasterArea(m_rect);
 }
