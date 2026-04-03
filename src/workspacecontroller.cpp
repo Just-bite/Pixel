@@ -30,6 +30,7 @@ WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* p
     m_tools[InstrumentType::FIGURE].reset(new FigureTool(this));
     m_tools[InstrumentType::TEXT].reset(new TextTool(this));
     m_tools[InstrumentType::PENCIL].reset(new PencilTool(this));
+    m_tools[InstrumentType::ERASER].reset(new EraserTool(this));
 
     if (m_context.view) {
         m_context.view->installEventFilter(this);
@@ -43,6 +44,10 @@ WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* p
         connect(m_context.contextPannel, &ContextPannel::propertyChanged, this, &WorkspaceController::onContextPropertyChanged);
         connect(m_context.contextPannel, &ContextPannel::colorTargetActivated, this, &WorkspaceController::onColorTargetChanged);
         connect(m_context.contextPannel, &ContextPannel::moveObjectLayerRequested, this, &WorkspaceController::onMoveObjectLayerRequested);
+
+        connect(m_context.contextPannel, &ContextPannel::rasterSettingsChanged, this, [this](){
+            if (m_active_tool) m_active_tool->onRasterSettingsChanged(m_context);
+        });
     }
 
     if (m_context.palettePannel) {
@@ -270,7 +275,7 @@ void WorkspaceController::onActiveLayerChanged(int id) {
     if (id >= 0 && canvas->getLayers()[id]->isFilter()) {
         m_context.scene->clearSelection(); // Вызовет clearTransformBox внутри PointerTool
         m_context.contextPannel->setTarget(static_cast<FilterLayer*>(canvas->getLayers()[id]));
-        m_context.contextPannel->setMode(false, false, false, false, "Filter Properties");
+        m_context.contextPannel->setMode(false, false, false, false, false, "Filter Properties");
     } else {
         setCurrentTool(m_current_tool_type); // Рестарт активного инструмента
         onSelectionChanged();
@@ -325,6 +330,7 @@ void WorkspaceController::onColorTargetChanged(bool isFill) { m_color_target_is_
 void WorkspaceController::onColorPickedPreview(const QColor& color) {
     QList<QGraphicsItem*> selected = m_context.scene->selectedItems();
     if (!selected.isEmpty()) {
+
         if (Figure* fig = dynamic_cast<Figure*>(selected.first())) {
             if (!m_is_previewing) { m_state_before_preview = fig->getState(); m_is_previewing = true; }
             FigureState s = fig->getState(); if (m_color_target_is_fill) s.fill = color; else s.stroke = color;
@@ -334,6 +340,7 @@ void WorkspaceController::onColorPickedPreview(const QColor& color) {
             TextState s = txt->getState(); s.color = color; txt->setState(s);
         }
     } else m_context.contextPannel->setDefaultColor(m_color_target_is_fill, color);
+    if (m_active_tool) m_active_tool->onColorChanged(color, m_context);
 }
 
 void WorkspaceController::onColorPickedCommit(const QColor& color) {
@@ -349,6 +356,7 @@ void WorkspaceController::onColorPickedCommit(const QColor& color) {
             m_undo_stack->push(new ModifyTextCommand(txt, txt->getState(), newState));
         }
     } else m_context.contextPannel->setDefaultColor(m_color_target_is_fill, color);
+    if (m_active_tool) m_active_tool->onColorChanged(color, m_context);
 }
 
 void WorkspaceController::onMoveObjectLayerRequested(int shift) {
@@ -380,51 +388,48 @@ void WorkspaceController::clearState() {
     setCurrentTool(InstrumentType::POINTER);
 }
 
-bool WorkspaceController::tryRasterizeLayer() {
+RasterizeResult WorkspaceController::prepareRasterLayer() {
     Canvas* canvas = m_context.projectManager->GetCurrentCanvas();
-    if (!canvas) return false;
+    if (!canvas) return RasterizeResult::Cancelled;
 
     int activeId = canvas->getSelectedLayerid();
-    if (activeId < 0) return false;
+    if (activeId < 0) return RasterizeResult::Cancelled;
 
     Layer* layer = canvas->getLayers()[activeId];
+    if (layer->isFilter()) return RasterizeResult::Cancelled;
 
-    if (layer->isFilter()) return false; // На фильтре рисовать нельзя
+    bool hasVectors = !layer->getObjects().empty();
 
-    // ИСПРАВЛЕНИЕ: Если слой растровый И на нем нет векторных объектов, просто рисуем!
-    if (layer->isRasterized() && layer->getObjects().empty()) {
-        return true;
+    // Сценарий 1: Уже растр и нет векторов поверх -> Рисуем
+    if (layer->isRasterized() && !hasVectors) return RasterizeResult::Ready;
+
+    // Сценарий 2: Слой абсолютно пустой (новый) -> Молча растрируем и Рисуем
+    if (!layer->isRasterized() && !hasVectors) {
+        m_undo_stack->push(new RasterizeLayerCommand(canvas, activeId));
+        return RasterizeResult::Ready;
     }
 
-    // Если мы дошли сюда, значит слой либо чисто векторный, либо растровый с добавленными поверх векторами.
+    // Сценарий 3: На слое есть векторы. Спрашиваем.
     Project* proj = m_context.projectManager->getCurrentProject();
-
     if (proj->getAskRasterize()) {
         QDialog dlg;
         dlg.setWindowTitle("Rasterize Layer");
-
         QVBoxLayout* layout = new QVBoxLayout(&dlg);
-        layout->addWidget(new QLabel("This layer must be rasterized to use raster tools.\nVector objects will be baked into the image and will no longer be editable."));
-
+        layout->addWidget(new QLabel("This layer must be rasterized to use raster tools.\nVector objects will be baked into the image."));
         QCheckBox* cb = new QCheckBox("Don't ask again");
         layout->addWidget(cb);
-
         QDialogButtonBox* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
         layout->addWidget(box);
-
         connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
         connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
 
-        if (dlg.exec() != QDialog::Accepted) return false;
-
-        if (cb->isChecked()) {
-            proj->setAskRasterize(false);
-        }
+        if (dlg.exec() != QDialog::Accepted) return RasterizeResult::Cancelled;
+        if (cb->isChecked()) proj->setAskRasterize(false);
     }
 
-    // Растрируем
     m_undo_stack->push(new RasterizeLayerCommand(canvas, activeId));
-    m_context.scene->clearSelection(); // Безопасно снимаем фокус с элементов (предотвращает краш)
+    m_context.scene->clearSelection();
 
-    return true;
+    // Возвращаем RasterizedNow, чтобы заблокировать первый мазок и избежать скачка!
+    return RasterizeResult::RasterizedNow;
 }

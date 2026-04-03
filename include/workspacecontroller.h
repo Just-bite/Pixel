@@ -10,12 +10,18 @@
 #include "instrumentpannel.h"
 #include "concrete_tools.h"
 
+enum class RasterizeResult {
+    Ready,          // Слой готов, можно сразу рисовать
+    RasterizedNow,  // Слой растрирован после диалога, рисование нужно прервать (чтобы не было рывка)
+    Cancelled       // Пользователь отменил растрирование
+};
+
 class WorkspaceController : public QObject {
     Q_OBJECT
 public:
     explicit WorkspaceController(const WorkspaceContext& ctx, QObject* parent = nullptr);
     QUndoStack* getUndoStack() const { return m_undo_stack; }
-    bool tryRasterizeLayer();
+    RasterizeResult prepareRasterLayer();
 
 public slots:
     void setCurrentTool(InstrumentType type);

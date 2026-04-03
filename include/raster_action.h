@@ -28,4 +28,15 @@ private:
     bool m_is_active; // Флаг для контроля памяти
 };
 
+class RasterStrokeCommand : public QUndoCommand {
+public:
+    RasterStrokeCommand(Layer* layer, const QImage& oldImg, const QImage& newImg, QUndoCommand *parent = nullptr);
+    void undo() override;
+    void redo() override;
+private:
+    Layer* m_layer;
+    QImage m_old_image;
+    QImage m_new_image;
+};
+
 #endif // RASTER_ACTION_H

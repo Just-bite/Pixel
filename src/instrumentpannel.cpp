@@ -66,7 +66,7 @@ void InstrumentPannel::setButtonsIcons()
 
             if (type != InstrumentType::POINTER && type != InstrumentType::HAND &&
                 type != InstrumentType::FIGURE && type != InstrumentType::TEXT &&
-                type != InstrumentType::PENCIL) { // Разрешаем PENCIL
+                type != InstrumentType::PENCIL && type != InstrumentType::ERASER) {
                 m_bttns_instruments[i]->setEnabled(false);
                 m_bttns_instruments[i]->setToolTip(m_instrument_icon[type].second + " (Not implemented)");
             }

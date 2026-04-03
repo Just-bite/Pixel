@@ -8,6 +8,7 @@
 #include <QInputDialog>
 #include "include/workspacecontroller.h"
 #include <QDebug>
+#include "include/raster_action.h"
 
 // ==================== POINTER TOOL ====================
 PointerTool::PointerTool(QObject* parent) : Tool(parent) {}
@@ -19,7 +20,7 @@ void PointerTool::onActivate(const WorkspaceContext& ctx) {
 
 void PointerTool::onDeactivate(const WorkspaceContext& ctx) {
     clearTransformBox(ctx);
-    ctx.contextPannel->setMode(false, false, false, false, "");
+    ctx.contextPannel->setMode(false, false, false, false, false, "");
 }
 
 void PointerTool::clearTransformBox(const WorkspaceContext& ctx) {
@@ -35,7 +36,8 @@ void PointerTool::clearTransformBox(const WorkspaceContext& ctx) {
 void PointerTool::updateContextPanel(const WorkspaceContext& ctx) {
     QList<QGraphicsItem*> selected = ctx.scene->selectedItems();
     if (selected.isEmpty()) {
-        ctx.contextPannel->setMode(false, false, false, false, "Pointer");
+        // Здесь ничего не выделено, все флаги false
+        ctx.contextPannel->setMode(false, false, false, false, false, "Pointer");
         ctx.contextPannel->setTarget(static_cast<Figure*>(nullptr));
         return;
     }
@@ -49,7 +51,8 @@ void PointerTool::updateContextPanel(const WorkspaceContext& ctx) {
     else if (txt) ctx.contextPannel->setTarget(txt);
     else if (img) ctx.contextPannel->setTarget(img);
 
-    ctx.contextPannel->setMode(fig != nullptr, txt != nullptr, false, false, "Pointer");
+    // Здесь передаем fig и txt
+    ctx.contextPannel->setMode(fig != nullptr, txt != nullptr, false, false, false, "Pointer");
     if (fig || txt || img) {
         ctx.palettePannel->setColor(ctx.contextPannel->getActiveColor());
     }
@@ -228,7 +231,11 @@ bool PointerTool::keyPressEvent(QKeyEvent* event, const WorkspaceContext& ctx) {
 }
 
 // ==================== HAND TOOL ====================
-void HandTool::onActivate(const WorkspaceContext& ctx) { ctx.view->setCursor(Qt::OpenHandCursor); }
+void HandTool::onActivate(const WorkspaceContext& ctx) {
+    ctx.view->setCursor(Qt::OpenHandCursor);
+    ctx.contextPannel->setMode(false, false, false, false, false, "Hand");
+}
+
 void HandTool::onDeactivate(const WorkspaceContext& ctx) { ctx.view->setCursor(Qt::ArrowCursor); }
 
 bool HandTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
@@ -250,6 +257,7 @@ bool HandTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
     }
     return false;
 }
+
 bool HandTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
     m_is_panning = false;
     ctx.view->setCursor(Qt::OpenHandCursor);
@@ -259,7 +267,7 @@ bool HandTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx
 // ==================== FIGURE TOOL ====================
 void FigureTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::CrossCursor);
-    ctx.contextPannel->setMode(false, false, true, false, "Figure");
+    ctx.contextPannel->setMode(false, false, true, false, false, "Figure");
 }
 
 bool FigureTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
@@ -316,7 +324,7 @@ bool FigureTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& c
 // ==================== TEXT TOOL ====================
 void TextTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::IBeamCursor);
-    ctx.contextPannel->setMode(false, false, false, true, "Text");
+    ctx.contextPannel->setMode(false, false, false, true, false, "Text");
 }
 
 bool TextTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
@@ -380,28 +388,96 @@ bool TextTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx
     return false;
 }
 
-// ==================== PENCIL TOOL (STUB) ====================
+#include <QPainterPath>
+#include <qmath.h>
+
+// ==================== PENCIL TOOL ====================
 void PencilTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::CrossCursor);
-    ctx.contextPannel->setMode(false, false, false, false, "Pencil (Raster)");
+    ctx.contextPannel->setMode(false, false, false, false, true, "Pencil");
+    // При активации инструмент "восстанавливает" свои настройки в UI
+    ctx.contextPannel->setRasterSettings(m_radius, m_density);
+    ctx.palettePannel->setColor(m_color);
+}
+
+void PencilTool::onRasterSettingsChanged(const WorkspaceContext& ctx) {
+    m_radius = ctx.contextPannel->getRasterRadius();
+    m_density = ctx.contextPannel->getRasterDensity();
+}
+
+void PencilTool::onColorChanged(const QColor& color, const WorkspaceContext& ctx) {
+    m_color = color;
+}
+
+void PencilTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density, const QColor& color) {
+    if (density >= 100) {
+        // Обычная сплошная линия
+        p.setPen(QPen(color, radius, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.drawLine(p1, p2);
+    } else {
+        // Режим спрея
+        p.setPen(Qt::NoPen);
+        p.setBrush(color);
+        int steps = qMax(1.0, QLineF(p1, p2).length());
+
+        for (int i = 0; i <= steps; ++i) {
+            qreal t = (qreal)i / steps;
+            QPointF pt = p1 + (p2 - p1) * t;
+
+            // Количество точек зависит от плотности и радиуса
+            int dotsToDraw = (radius * density) / 50;
+            if (dotsToDraw < 1) dotsToDraw = 1;
+
+            for (int d = 0; d < dotsToDraw; ++d) {
+                if ((rand() % 100) < density) {
+                    qreal angle = (rand() % 360) * M_PI / 180.0;
+                    qreal r = (rand() % (radius * 100)) / 100.0;
+                    QPointF offset(r * cos(angle), r * sin(angle));
+                    p.drawEllipse(pt + offset, 1, 1);
+                }
+            }
+        }
+    }
 }
 
 bool PencilTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
     if (event->button() != Qt::LeftButton) return false;
 
-    // Пытаемся растрировать слой
-    if (ctx.controller && ctx.controller->tryRasterizeLayer()) {
-        m_is_drawing = true;
-        // Здесь в Этапе 2 мы начнем рисовать по QImage
-        qDebug() << "Layer is ready for raster drawing!";
-        return true;
-    }
-    return false;
+    RasterizeResult res = ctx.controller->prepareRasterLayer();
+    // Если юзер нажал Отмену ИЛИ если мы только что растрировали через окно — прерываем мазок!
+    if (res == RasterizeResult::Cancelled || res == RasterizeResult::RasterizedNow) return false;
+
+    m_active_layer = ctx.projectManager->GetCurrentCanvas()->getLayers()[ctx.projectManager->GetCurrentCanvas()->getSelectedLayerid()];
+    m_image_before_stroke = *m_active_layer->getRasterImagePtr();
+
+    m_is_drawing = true;
+    m_last_pos = ctx.view->mapToScene(event->pos());
+
+    QPainter p(m_active_layer->getRasterImagePtr());
+    p.setRenderHint(QPainter::Antialiasing);
+    drawStroke(p, m_last_pos, m_last_pos, m_radius, m_density, m_color);
+
+    m_active_layer->updateRasterArea(QRectF(m_last_pos.x() - m_radius, m_last_pos.y() - m_radius, m_radius*2, m_radius*2));
+    return true;
 }
 
 bool PencilTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
-    if (m_is_drawing) {
-        // Здесь будет рисование линии в Этапе 2
+    // ЗАЩИТА: Если мышь отпущена, но Qt поймал глюк фокуса — сбрасываем рисование
+    if (!(event->buttons() & Qt::LeftButton)) {
+        m_is_drawing = false;
+        return false;
+    }
+
+    if (m_is_drawing && m_active_layer) {
+        QPointF current_pos = ctx.view->mapToScene(event->pos());
+        QPainter p(m_active_layer->getRasterImagePtr());
+        p.setRenderHint(QPainter::Antialiasing);
+        drawStroke(p, m_last_pos, current_pos, m_radius, m_density, m_color);
+
+        QRectF updateRect = QRectF(m_last_pos, current_pos).normalized().adjusted(-m_radius, -m_radius, m_radius, m_radius);
+        m_active_layer->updateRasterArea(updateRect);
+
+        m_last_pos = current_pos;
         return true;
     }
     return false;
@@ -410,7 +486,104 @@ bool PencilTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx)
 bool PencilTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
     if (m_is_drawing && event->button() == Qt::LeftButton) {
         m_is_drawing = false;
-        // Здесь будет сохранение "грязного прямоугольника" в Undo-стек
+        // Сохраняем команду в стек (пока целиком, оптимизируем память в этапе 3)
+        ctx.undoStack->push(new RasterStrokeCommand(m_active_layer, m_image_before_stroke, *m_active_layer->getRasterImagePtr()));
+        m_active_layer = nullptr;
+        return true;
+    }
+    return false;
+}
+
+// ==================== ERASER TOOL ====================
+void EraserTool::onActivate(const WorkspaceContext& ctx) {
+    ctx.view->setCursor(Qt::CrossCursor);
+    ctx.contextPannel->setMode(false, false, false, false, true, "Eraser");
+    // Ластику нужен только размер и плотность
+    ctx.contextPannel->setRasterSettings(m_radius, m_density);
+}
+
+void EraserTool::onRasterSettingsChanged(const WorkspaceContext& ctx) {
+    m_radius = ctx.contextPannel->getRasterRadius();
+    m_density = ctx.contextPannel->getRasterDensity();
+}
+
+void EraserTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density) {
+    // ВАЖНО: Режим "очистки" стирает пиксели в альфа-канал
+    p.setCompositionMode(QPainter::CompositionMode_Clear);
+
+    if (density >= 100) {
+        p.setPen(QPen(Qt::transparent, radius, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.drawLine(p1, p2);
+    } else {
+        p.setPen(Qt::NoPen);
+        p.setBrush(Qt::transparent);
+        int steps = qMax(1.0, QLineF(p1, p2).length());
+
+        for (int i = 0; i <= steps; ++i) {
+            qreal t = (qreal)i / steps;
+            QPointF pt = p1 + (p2 - p1) * t;
+
+            int dotsToDraw = (radius * density) / 50;
+            if (dotsToDraw < 1) dotsToDraw = 1;
+
+            for (int d = 0; d < dotsToDraw; ++d) {
+                if ((rand() % 100) < density) {
+                    qreal angle = (rand() % 360) * M_PI / 180.0;
+                    qreal r = (rand() % (radius * 100)) / 100.0;
+                    QPointF offset(r * cos(angle), r * sin(angle));
+                    p.drawEllipse(pt + offset, 1, 1);
+                }
+            }
+        }
+    }
+}
+
+bool EraserTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
+    if (event->button() != Qt::LeftButton) return false;
+
+    RasterizeResult res = ctx.controller->prepareRasterLayer();
+    if (res == RasterizeResult::Cancelled || res == RasterizeResult::RasterizedNow) return false;
+
+    m_active_layer = ctx.projectManager->GetCurrentCanvas()->getLayers()[ctx.projectManager->GetCurrentCanvas()->getSelectedLayerid()];
+    m_image_before_stroke = *m_active_layer->getRasterImagePtr();
+
+    m_is_drawing = true;
+    m_last_pos = ctx.view->mapToScene(event->pos());
+
+    QPainter p(m_active_layer->getRasterImagePtr());
+    p.setRenderHint(QPainter::Antialiasing);
+    drawStroke(p, m_last_pos, m_last_pos, m_radius, m_density);
+
+    m_active_layer->updateRasterArea(QRectF(m_last_pos.x() - m_radius, m_last_pos.y() - m_radius, m_radius*2, m_radius*2));
+    return true;
+}
+
+bool EraserTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
+    if (!(event->buttons() & Qt::LeftButton)) {
+        m_is_drawing = false;
+        return false;
+    }
+
+    if (m_is_drawing && m_active_layer) {
+        QPointF current_pos = ctx.view->mapToScene(event->pos());
+        QPainter p(m_active_layer->getRasterImagePtr());
+        p.setRenderHint(QPainter::Antialiasing);
+        drawStroke(p, m_last_pos, current_pos, m_radius, m_density);
+
+        QRectF updateRect = QRectF(m_last_pos, current_pos).normalized().adjusted(-m_radius, -m_radius, m_radius, m_radius);
+        m_active_layer->updateRasterArea(updateRect);
+
+        m_last_pos = current_pos;
+        return true;
+    }
+    return false;
+}
+
+bool EraserTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
+    if (m_is_drawing && event->button() == Qt::LeftButton) {
+        m_is_drawing = false;
+        ctx.undoStack->push(new RasterStrokeCommand(m_active_layer, m_image_before_stroke, *m_active_layer->getRasterImagePtr()));
+        m_active_layer = nullptr;
         return true;
     }
     return false;

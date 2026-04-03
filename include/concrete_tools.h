@@ -5,6 +5,7 @@
 #include "object.h"
 #include "manipulator.h"
 #include <QPoint>
+#include "layer.h"
 
 // --- ИНСТРУМЕНТ "УКАЗАТЕЛЬ" (POINTER) ---
 class PointerTool : public Tool {
@@ -105,8 +106,43 @@ public:
     bool mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
     bool mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
 
+    void onRasterSettingsChanged(const WorkspaceContext& ctx) override;
+    void onColorChanged(const QColor& color, const WorkspaceContext& ctx) override;
+
 private:
+    void drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density, const QColor& color);
+
     bool m_is_drawing = false;
+    Layer* m_active_layer = nullptr;
+    QPointF m_last_pos;
+    QImage m_image_before_stroke;
+    int m_radius = 10;
+    int m_density = 100;
+    QColor m_color = Qt::black;
+};
+
+// --- ИНСТРУМЕНТ "ЛАСТИК" (ERASER) ---
+class EraserTool : public Tool {
+    Q_OBJECT
+public:
+    explicit EraserTool(QObject* parent = nullptr) : Tool(parent) {}
+
+    void onActivate(const WorkspaceContext& ctx) override;
+    bool mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
+    bool mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
+    bool mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
+
+    void onRasterSettingsChanged(const WorkspaceContext& ctx) override;
+
+private:
+    void drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density);
+
+    bool m_is_drawing = false;
+    Layer* m_active_layer = nullptr;
+    QPointF m_last_pos;
+    QImage m_image_before_stroke;
+    int m_radius = 20;
+    int m_density = 100;
 };
 
 #endif // CONCRETE_TOOLS_H

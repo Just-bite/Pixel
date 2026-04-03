@@ -6,6 +6,7 @@
 #include <QHBoxLayout>
 #include <QComboBox>
 #include <QDoubleSpinBox>
+#include <QSpinBox>
 #include <QPushButton>
 #include <QLabel>
 #include <QGroupBox>
@@ -19,7 +20,7 @@ class ContextPannel : public QWidget {
 public:
     explicit ContextPannel(QWidget* parent = nullptr);
 
-    void setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, const QString& toolName = "");
+    void setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, bool isRasterTool, const QString& toolName = "");
 
     void setTarget(Figure* figure);
     void setTarget(TextObject* textObj);
@@ -36,10 +37,16 @@ public:
 
     QColor getActiveColor() const;
 
+    void setRasterSettings(int radius, int density);
+
+    int getRasterRadius() const { return m_raster_radius->value(); }
+    int getRasterDensity() const { return m_raster_density->value(); }
+
 signals:
     void propertyChanged();
     void colorTargetActivated(bool isFill);
     void moveObjectLayerRequested(int shift);
+    void rasterSettingsChanged();
 
 private slots:
     void onColorFillClicked();
@@ -84,6 +91,11 @@ private:
 
     FilterLayer* m_current_filter_target = nullptr;
     std::vector<QDoubleSpinBox*> m_filter_param_boxes;
+
+    // ИЗМЕНЕНИЕ: Группа для растровых инструментов
+    QGroupBox *m_raster_group;
+    QSpinBox *m_raster_radius;
+    QSpinBox *m_raster_density;
 
     void rebuildFilterParamsUI(FilterType type);
 };

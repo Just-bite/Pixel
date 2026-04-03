@@ -58,3 +58,14 @@ void RasterizeLayerCommand::undo() {
     }
     m_is_active = false;
 }
+
+RasterStrokeCommand::RasterStrokeCommand(Layer* layer, const QImage& oldImg, const QImage& newImg, QUndoCommand *parent)
+    : QUndoCommand(parent), m_layer(layer), m_old_image(oldImg), m_new_image(newImg) {}
+
+void RasterStrokeCommand::undo() {
+    m_layer->setRasterImage(m_old_image);
+}
+
+void RasterStrokeCommand::redo() {
+    m_layer->setRasterImage(m_new_image);
+}

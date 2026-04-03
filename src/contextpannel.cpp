@@ -59,6 +59,21 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     layer_layout->addWidget(m_btn_layer_down);
     layer_layout->addWidget(m_btn_layer_up);
 
+    m_raster_group = new QGroupBox("Brush", this);
+    QHBoxLayout* raster_layout = new QHBoxLayout(m_raster_group);
+    raster_layout->setContentsMargins(5, 5, 5, 5);
+
+    m_raster_radius = new QSpinBox(this);
+    m_raster_radius->setRange(1, 500);
+    m_raster_radius->setValue(10);
+
+    m_raster_density = new QSpinBox(this);
+    m_raster_density->setRange(1, 100);
+    m_raster_density->setValue(100);
+
+    addLabeledWidget(raster_layout, "Radius:", m_raster_radius);
+    addLabeledWidget(raster_layout, "Density %:", m_raster_density);
+
     // --- Группа Фильтра ---
     m_filter_group = new QGroupBox("Filter", this);
     QHBoxLayout* filter_layout = new QHBoxLayout(m_filter_group);
@@ -87,10 +102,11 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     main_layout->addWidget(m_style_group);
     main_layout->addWidget(m_layer_group);
     main_layout->addWidget(m_text_group);
+    main_layout->addWidget(m_raster_group);
     main_layout->addWidget(m_filter_group);
     main_layout->addStretch();
 
-    m_default_state.fill = Qt::cyan;
+    m_default_state.fill = Qt::red;
     m_default_state.stroke = Qt::black;
     m_default_state.thickness = 2.0f;
     m_default_state.type = FigureType::Ellipse;
@@ -98,6 +114,9 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_default_state.pos = QPointF(0, 0);
     m_default_state.rot = 0.0;
     m_default_state.rect = QRectF(0, 0, 0, 0);
+    m_default_text_state.color = Qt::black;
+
+    m_default_text_state.font = QFont("Arial", 20);
 
     connect(m_btn_fill_color, &QPushButton::clicked, this, &ContextPannel::onColorFillClicked);
     connect(m_btn_stroke_color, &QPushButton::clicked, this, &ContextPannel::onColorStrokeClicked);
@@ -114,6 +133,8 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     connect(m_thick_box, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onAnyUIChanged);
     connect(m_font_box, &QFontComboBox::currentFontChanged, this, &ContextPannel::onAnyUIChanged);
     connect(m_font_size_box, &QDoubleSpinBox::editingFinished, this, &ContextPannel::onAnyUIChanged);
+    connect(m_raster_radius, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &ContextPannel::onAnyUIChanged);
+    connect(m_raster_density, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &ContextPannel::onAnyUIChanged);
 
     connect(m_filter_type_box, comboSignal, this, &ContextPannel::onFilterTypeChanged);
 
@@ -130,19 +151,27 @@ QDoubleSpinBox* ContextPannel::createSpinBox(double min, double max) {
     return sb;
 }
 
-void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, const QString& toolName) {
+void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, bool isRasterTool, const QString& toolName) {
     bool isFilterSel = (m_current_filter_target != nullptr);
     bool isImgSel = (m_current_image_target != nullptr);
     bool somethingSelected = isFigSel || isTextSel || isImgSel || isFilterSel;
-
-    m_lbl_placeholder->setVisible(!somethingSelected && !isFigTool && !isTextTool);
-    if (!toolName.isEmpty()) m_lbl_placeholder->setText(QString("Tool: %1. No specific settings.").arg(toolName));
 
     m_filter_group->setVisible(isFilterSel);
     m_geometry_group->setVisible(somethingSelected && !isFilterSel);
     m_style_group->setVisible((isFigSel || isFigTool) && !isFilterSel);
     m_text_group->setVisible((isTextSel || isTextTool) && !isFilterSel);
+    m_raster_group->setVisible(isRasterTool);
     m_layer_group->setVisible(somethingSelected);
+
+    // Плейсхолдер виден ТОЛЬКО если все панели скрыты
+    bool anyGroupVisible = m_filter_group->isVisible() || m_geometry_group->isVisible() ||
+                           m_style_group->isVisible() || m_text_group->isVisible() || m_raster_group->isVisible();
+
+    m_lbl_placeholder->setVisible(!anyGroupVisible);
+
+    if (!anyGroupVisible && !toolName.isEmpty()) {
+        m_lbl_placeholder->setText(QString("Tool: %1. No specific settings.").arg(toolName));
+    }
 
     if (!somethingSelected) {
         m_current_target = nullptr;
@@ -311,11 +340,19 @@ void ContextPannel::updateColorButtonsUI() {
     m_btn_stroke_color->setStyleSheet(QString("background-color: %1; %2").arg(s.stroke.name(QColor::HexArgb)).arg(strokeBorder));
 }
 
+void ContextPannel::setRasterSettings(int radius, int density) {
+    blockSignals(true);
+    m_raster_radius->setValue(radius);
+    m_raster_density->setValue(density);
+    blockSignals(false);
+}
+
 void ContextPannel::onColorFillClicked() { m_active_is_fill = true; updateColorButtonsUI(); emit colorTargetActivated(true); }
 void ContextPannel::onColorStrokeClicked() { m_active_is_fill = false; updateColorButtonsUI(); emit colorTargetActivated(false); }
 void ContextPannel::onMoveUpClicked() { emit moveObjectLayerRequested(1); }
 void ContextPannel::onMoveDownClicked() { emit moveObjectLayerRequested(-1); }
 void ContextPannel::onAnyUIChanged() {
+    emit rasterSettingsChanged();
     if (m_current_target || m_current_text_target || m_current_image_target) emit propertyChanged();
     else {
         m_default_state.type = static_cast<FigureType>(m_type_box->currentData().toInt());
