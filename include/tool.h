@@ -29,6 +29,9 @@ public:
     virtual void onSelectionChanged(const WorkspaceContext& ctx) {}
     virtual void onViewScaleChanged(const WorkspaceContext& ctx) {}
     virtual void onObjectModified(const WorkspaceContext& ctx) {}
+
+    virtual void onRasterSettingsChanged(const WorkspaceContext& ctx) {}
+    virtual void onColorChanged(const QColor& color, const WorkspaceContext& ctx) {}
 };
 
 #endif // TOOL_H

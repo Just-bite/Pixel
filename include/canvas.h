@@ -24,6 +24,7 @@ public:
     void setScene(QGraphicsScene* scene) { m_parent_sceene = scene; }
     void moveLayer(int id, int shift);
     void setSize(int w, int h);
+    QImage renderLayerToImage(int id);
 
     const std::vector<Layer*>& getLayers() const { return m_layers; }
     QGraphicsScene* getScene() const { return m_parent_sceene; }
@@ -47,6 +48,8 @@ public:
 
     QSize getSize() const { return m_canvas_size; }
     void renameLayer(int id, const QString& new_name);
+    QGraphicsRectItem* getBgItem() const { return m_bg_item; }
+
 private:
     std::vector<Layer*> m_layers;
     QGraphicsScene* m_parent_sceene;

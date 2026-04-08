@@ -31,9 +31,10 @@ void Figure::setState(const FigureState& state) { prepareGeometryChange(); m_sta
 
 // --- TEXT ---
 TextObject::TextObject(const QRectF& rect, QGraphicsItem* parent) : Object(parent) {
-    m_state.rect = rect; m_state.text = "Text"; m_state.font = QFont("Arial", 16);
+    m_state.rect = rect; m_state.text = "Text"; m_state.font = QFont("Arial", 20);
     m_state.color = Qt::black; m_state.pos = QPointF(0, 0); m_state.rot = 0.0;
 }
+
 TextObject::TextObject(QGraphicsItem* parent) : TextObject(QRectF(0,0,100,50), parent) {}
 
 void TextObject::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
