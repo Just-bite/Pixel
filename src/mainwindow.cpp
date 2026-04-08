@@ -2,13 +2,15 @@
 #include "ui_mainwindow.h"
 #include <QTimer>
 #include <QMessageBox>
+#include <QStatusBar>
+#include <QFileInfo>
 
-MainWindow::MainWindow(QWidget *parent)
+    MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-    , m_scene_main(new QGraphicsScene(this))
-    , m_view_main(new QGraphicsView(this))
-    , m_project_manager(new ProjectManager())
+, ui(new Ui::MainWindow)
+, m_scene_main(new QGraphicsScene(this))
+, m_view_main(new QGraphicsView(this))
+, m_project_manager(new ProjectManager())
 {
     ui->setupUi(this);
 
@@ -32,16 +34,6 @@ MainWindow::MainWindow(QWidget *parent)
     m_view_main->viewport()->setAcceptDrops(true);
 
     m_project_manager->createProject();
-
-    connect(m_project_manager, &ProjectManager::projectLoaded, this, [this](){
-        if(m_workspace_controller) m_workspace_controller->getUndoStack()->clear();
-    });
-
-    connect(m_project_manager, &ProjectManager::layersUpdated, this, [this](){
-        if(m_layers_pannel) {
-            m_layers_pannel->selectLayerFromOutside(0);
-        }
-    });
 
     Canvas *canvas = m_project_manager->GetCurrentCanvas();
     canvas->setScene(m_scene_main);
@@ -106,18 +98,41 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(m_project_manager, &ProjectManager::projectAboutToClose, m_workspace_controller, &WorkspaceController::clearState);
 
+    connect(m_workspace_controller->getUndoStack(), &QUndoStack::cleanChanged, this, [this](bool clean) {
+        m_project_manager->setModified(!clean);
+        updateWindowTitle();
+    });
+
+    connect(m_project_manager, &ProjectManager::projectSaved, m_workspace_controller->getUndoStack(), &QUndoStack::setClean);
+
     connect(m_project_manager, &ProjectManager::projectLoaded, this, [this](){
+        if(m_workspace_controller) m_workspace_controller->getUndoStack()->clear();
         updateInfoPanel();
+        updateWindowTitle();
+    });
+
+    connect(m_project_manager, &ProjectManager::layersUpdated, this, [this](){
+        if(m_layers_pannel) m_layers_pannel->selectLayerFromOutside(0);
     });
 
     connect(m_project_manager, &ProjectManager::layersUpdated, m_layers_pannel, &LayersPannel::updateLayers);
 
+    // ИСПРАВЛЕНИЕ: Используем лямбды для передачи сообщения в StatusBar
+    connect(m_project_manager, &ProjectManager::statusMessage, this, [this](const QString& msg){
+        statusBar()->showMessage(msg, 5000); // 5 секунд
+    });
+    connect(m_workspace_controller, &WorkspaceController::statusMessage, this, [this](const QString& msg){
+        statusBar()->showMessage(msg, 5000);
+    });
+
     updateInfoPanel();
+    updateWindowTitle();
     createMenuBar();
     QTimer::singleShot(0, this, &MainWindow::onFitToScreen);
     m_workspace_controller->setCurrentTool(InstrumentType::POINTER);
-}
 
+    statusBar()->showMessage("Welcome to Pixel Vector Graphics Editor!", 5000);
+}
 
 void MainWindow::createMenuBar()
 {
@@ -178,6 +193,20 @@ void MainWindow::createMenuBar()
     connect(about_act, &QAction::triggered, this, [this](){
         QMessageBox::about(this, "About Pixel", "Pixel - Vector Graphics Editor\nWritten in C++ with Qt.");
     });
+}
+
+void MainWindow::updateWindowTitle() {
+    QString name = m_project_manager->getCurrentFilePath().isEmpty() ? "Untitled" : QFileInfo(m_project_manager->getCurrentFilePath()).fileName();
+    QString star = m_workspace_controller->getUndoStack()->isClean() ? "" : "*";
+    setWindowTitle(QString("Pixel - %1%2").arg(name).arg(star));
+}
+
+void MainWindow::closeEvent(QCloseEvent *event) {
+    if (m_project_manager->promptSaveIfModified()) {
+        event->accept();
+    } else {
+        event->ignore();
+    }
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)

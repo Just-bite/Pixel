@@ -11,9 +11,9 @@
 #include "concrete_tools.h"
 
 enum class RasterizeResult {
-    Ready,          // Слой готов, можно сразу рисовать
-    RasterizedNow,  // Слой растрирован после диалога, рисование нужно прервать (чтобы не было рывка)
-    Cancelled       // Пользователь отменил растрирование
+        Ready,
+        RasterizedNow,
+        Cancelled
 };
 
 class WorkspaceController : public QObject {
@@ -37,6 +37,7 @@ public slots:
 
 signals:
     void viewportChanged();
+    void statusMessage(const QString& msg); // НОВЫЙ СИГНАЛ
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
@@ -54,7 +55,6 @@ private:
     InstrumentType m_current_tool_type = InstrumentType::POINTER;
     InstrumentType m_previous_tool_type = InstrumentType::POINTER;
 
-    // Глобальный буфер обмена
     enum class ClipboardType { None, Figure, Text, Image };
     ClipboardType m_clipboard_type = ClipboardType::None;
     FigureState m_clipboard_figure;

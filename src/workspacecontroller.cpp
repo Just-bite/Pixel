@@ -75,8 +75,23 @@ void WorkspaceController::setCurrentTool(InstrumentType type) {
         m_active_tool = m_tools[InstrumentType::POINTER].get();
     }
 
+    // Сообщение для Status Bar
+    QString toolName;
+    switch(type) {
+    case InstrumentType::POINTER: toolName = "Pointer"; break;
+    case InstrumentType::HAND: toolName = "Hand"; break;
+    case InstrumentType::FIGURE: toolName = "Figure"; break;
+    case InstrumentType::TEXT: toolName = "Text"; break;
+    case InstrumentType::PENCIL: toolName = "Pencil"; break;
+    case InstrumentType::ERASER: toolName = "Eraser"; break;
+    case InstrumentType::FILL: toolName = "Fill Bucket"; break;
+    default: toolName = "Unknown";
+    }
+    emit statusMessage(QString("Tool selected: %1").arg(toolName));
+
     if (m_active_tool) m_active_tool->onActivate(m_context);
 }
+
 
 void WorkspaceController::updateTransformBoxScale() {
     if (m_active_tool) m_active_tool->onViewScaleChanged(m_context);

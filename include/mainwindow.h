@@ -15,6 +15,7 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QScrollBar>
+#include <QCloseEvent>
 
 #include "contextpannel.h"
 #include "infopannel.h"
@@ -42,6 +43,7 @@ public:
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
 
 private:
     void createMenuBar();
@@ -62,6 +64,7 @@ private:
 
 private slots:
     void updateInfoPanel();
+    void updateWindowTitle();
 
     void onZoomIn();
     void onZoomOut();
