@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QCheckBox>
 #include <QDialogButtonBox>
+#include <qmath.h>
 
 #include "include/workspacecontroller.h"
 #include "include/action.h"
@@ -31,6 +32,7 @@ WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* p
     m_tools[InstrumentType::PENCIL].reset(new PencilTool(this));
     m_tools[InstrumentType::ERASER].reset(new EraserTool(this));
     m_tools[InstrumentType::FILL].reset(new FillTool(this));
+    m_tools[InstrumentType::PIPETTE].reset(new PipetteTool(this));
 
     if (m_context.view) {
         m_context.view->installEventFilter(this);
@@ -67,11 +69,20 @@ WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* p
 void WorkspaceController::setCurrentTool(InstrumentType type) {
     if (m_active_tool) m_active_tool->onDeactivate(m_context);
 
+    if (m_current_tool_type != type) {
+        m_previous_tool_type = m_current_tool_type;
+    }
+
     m_current_tool_type = type;
     if (m_tools.find(type) != m_tools.end()) {
         m_active_tool = m_tools[type].get();
     } else {
         m_active_tool = m_tools[InstrumentType::POINTER].get();
+    }
+
+    // Синхронизация UI
+    if (m_context.instrumentPannel) {
+        m_context.instrumentPannel->setActiveTool(type);
     }
 
     QString toolName;
@@ -83,11 +94,16 @@ void WorkspaceController::setCurrentTool(InstrumentType type) {
     case InstrumentType::PENCIL: toolName = "Pencil"; break;
     case InstrumentType::ERASER: toolName = "Eraser"; break;
     case InstrumentType::FILL: toolName = "Fill Bucket"; break;
+    case InstrumentType::PIPETTE: toolName = "Pipette"; break;
     default: toolName = "Unknown";
     }
     emit statusMessage(QString("Tool selected: %1").arg(toolName));
 
     if (m_active_tool) m_active_tool->onActivate(m_context);
+}
+
+void WorkspaceController::revertToPreviousTool() {
+    setCurrentTool(m_previous_tool_type);
 }
 
 void WorkspaceController::updateTransformBoxScale() {
@@ -99,15 +115,22 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
 
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent *kEvent = static_cast<QKeyEvent *>(event);
-        if (kEvent->key() == Qt::Key_Space && !kEvent->isAutoRepeat()) {
-            m_previous_tool_type = m_current_tool_type;
+        if (kEvent->key() == Qt::Key_Space && !kEvent->isAutoRepeat() && m_current_tool_type != InstrumentType::HAND) {
             setCurrentTool(InstrumentType::HAND);
+            return true;
+        }
+        if (kEvent->key() == Qt::Key_Alt && !kEvent->isAutoRepeat() && m_current_tool_type != InstrumentType::PIPETTE) {
+            setCurrentTool(InstrumentType::PIPETTE);
             return true;
         }
     } else if (event->type() == QEvent::KeyRelease) {
         QKeyEvent *kEvent = static_cast<QKeyEvent *>(event);
-        if (kEvent->key() == Qt::Key_Space && !kEvent->isAutoRepeat()) {
-            setCurrentTool(m_previous_tool_type);
+        if (kEvent->key() == Qt::Key_Space && !kEvent->isAutoRepeat() && m_current_tool_type == InstrumentType::HAND) {
+            revertToPreviousTool();
+            return true;
+        }
+        if (kEvent->key() == Qt::Key_Alt && !kEvent->isAutoRepeat() && m_current_tool_type == InstrumentType::PIPETTE) {
+            revertToPreviousTool();
             return true;
         }
     }
@@ -115,9 +138,38 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
     if (obj == m_context.view->viewport() || obj == m_context.view) {
         if (event->type() == QEvent::Wheel) {
             QWheelEvent *wEvent = static_cast<QWheelEvent *>(event);
-            m_context.view->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-            double factor = (wEvent->angleDelta().y() > 0) ? 1.15 : (1.0 / 1.15);
+            double delta = wEvent->angleDelta().y();
+            if (delta == 0) return true;
+
+            m_context.view->setTransformationAnchor(QGraphicsView::NoAnchor);
+            QPointF targetScenePos = m_context.view->mapToScene(wEvent->pos());
+
+            double factor = qPow(1.15, delta / 120.0);
+
+            Canvas* canvas = m_context.projectManager->GetCurrentCanvas();
+            double cw = canvas ? canvas->getSize().width() : 800;
+            double ch = canvas ? canvas->getSize().height() : 600;
+            double vw = m_context.view->viewport()->width();
+            double vh = m_context.view->viewport()->height();
+
+            double minScaleW = vw / (10.0 * qMax(1.0, cw));
+            double minScaleH = vh / (10.0 * qMax(1.0, ch));
+            double minScale = qMin(minScaleW, minScaleH);
+            if (minScale <= 0) minScale = 0.01;
+            double maxScale = 150.0;
+
+            double currentScale = m_context.view->transform().m11();
+            double newScale = currentScale * factor;
+
+            if (newScale < minScale) factor = minScale / currentScale;
+            if (newScale > maxScale) factor = maxScale / currentScale;
+
             m_context.view->scale(factor, factor);
+
+            QPointF newScenePos = m_context.view->mapToScene(wEvent->pos());
+            QPointF moveDelta = newScenePos - targetScenePos;
+            m_context.view->translate(moveDelta.x(), moveDelta.y());
+
             updateTransformBoxScale();
             emit viewportChanged();
             return true;
@@ -238,7 +290,6 @@ void WorkspaceController::handlePaste() {
     }
 }
 
-
 void WorkspaceController::handleDrop(QDropEvent* event) {
     Canvas* canvas = m_context.projectManager->GetCurrentCanvas();
     if (!canvas) return;
@@ -356,10 +407,14 @@ void WorkspaceController::onColorPickedCommit(const QColor& color) {
     if (!selected.isEmpty()) {
         if (Figure* fig = dynamic_cast<Figure*>(selected.first())) {
             FigureState newState = fig->getState();
+            if (m_color_target_is_fill) newState.fill = color; else newState.stroke = color;
+
             if (m_is_previewing) { fig->setState(m_state_before_preview); m_is_previewing = false; }
             m_undo_stack->push(new ModifyFigureCommand(fig, fig->getState(), newState));
         } else if (TextObject* txt = dynamic_cast<TextObject*>(selected.first())) {
             TextState newState = txt->getState();
+            newState.color = color;
+
             if (m_is_previewing) { txt->setState(m_text_state_before_preview); m_is_previewing = false; }
             m_undo_stack->push(new ModifyTextCommand(txt, txt->getState(), newState));
         }

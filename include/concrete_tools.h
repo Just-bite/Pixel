@@ -106,10 +106,9 @@ public:
     bool mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
 
     void onRasterSettingsChanged(const WorkspaceContext& ctx) override;
-    void onColorChanged(const QColor& color, const WorkspaceContext& ctx) override;
 
 private:
-    void drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density, const QColor& color);
+    void drawStroke(QPainter& p, const QPoint& p1, const QPoint& p2, int radius, int density, const QColor& color);
 
     bool m_is_drawing = false;
     Layer* m_active_layer = nullptr;
@@ -119,7 +118,7 @@ private:
     int m_density = 100;
     int m_hardness = 100;
     QRect m_dirty_rect;
-    QColor m_color = Qt::black;
+    QColor m_current_stroke_color = Qt::black; // Кэш цвета для текущего мазка
 };
 
 
@@ -136,7 +135,7 @@ public:
     void onRasterSettingsChanged(const WorkspaceContext& ctx) override;
 
 private:
-    void drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density);
+    void drawStroke(QPainter& p, const QPoint& p1, const QPoint& p2, int radius, int density);
 
     bool m_is_drawing = false;
     Layer* m_active_layer = nullptr;
@@ -156,10 +155,21 @@ public:
 
     void onActivate(const WorkspaceContext& ctx) override;
     bool mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
-    void onColorChanged(const QColor& color, const WorkspaceContext& ctx) override;
+};
+
+class PipetteTool : public Tool {
+    Q_OBJECT
+public:
+    explicit PipetteTool(QObject* parent = nullptr) : Tool(parent) {}
+
+    void onActivate(const WorkspaceContext& ctx) override;
+    bool mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
+    bool mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
+    bool mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
 
 private:
-    QColor m_color = Qt::black;
+    void pickColor(const QPoint& mousePos, const WorkspaceContext& ctx, bool commit);
+    bool m_is_picking = false;
 };
 
 #endif // CONCRETE_TOOLS_H

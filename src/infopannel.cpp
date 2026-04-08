@@ -1,5 +1,7 @@
 #include "include\infopannel.h"
 
+#define RESOURCE_PATH_PREFIX ":/application_icon/resources/"
+
 InfoPannel::InfoPannel(std::pair<int, int> canvas_size, float scale, QWidget* parent)
     : QWidget(parent)
     , m_canvas_size(canvas_size)
@@ -15,9 +17,20 @@ InfoPannel::InfoPannel(std::pair<int, int> canvas_size, float scale, QWidget* pa
     m_scale_edit = new QLineEdit(QString("%1").arg(scale * 100), parent);
     m_scale_edit->setFixedWidth(60);
 
-    m_btn_decrease = new QPushButton("-", parent);
-    m_btn_increase = new QPushButton("+", parent);
-    m_btn_fit = new QPushButton("Fit", parent);
+    m_btn_decrease = new QPushButton("-", this);
+    m_btn_increase = new QPushButton("+", this);
+
+    QFont btnFont = m_btn_decrease->font();
+    btnFont.setBold(true);
+    btnFont.setPointSize(11);                // крупный шрифт
+
+    m_btn_decrease->setFont(btnFont);
+    m_btn_increase->setFont(btnFont);
+
+    m_btn_decrease->setFixedSize(30, 30);    // фиксированный размер
+    m_btn_increase->setFixedSize(30, 30);
+    m_btn_fit = new QPushButton(parent);
+    m_btn_fit->setIcon(QIcon(RESOURCE_PATH_PREFIX "fit-to-screen.svg"));
 
     m_info_pannel_layout->addWidget(m_canvas_size_label);
     m_info_pannel_layout->addStretch();
