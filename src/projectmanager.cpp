@@ -72,7 +72,7 @@ void ProjectManager::saveToJson(const QString& path) {
     if (!canvas) return;
 
     QJsonObject root;
-    root["version"] = 3;
+    root["version"] = 4; // Поднял версию, т.к. добавились маски
     if (m_selected_project) {
         root["ask_rasterize"] = m_selected_project->getAskRasterize();
     }
@@ -84,10 +84,10 @@ void ProjectManager::saveToJson(const QString& path) {
         lObj["visible"] = l->isVisible();
         lObj["locked"] = l->isLocked();
         lObj["isFilter"] = l->isFilter();
-        lObj["isRasterized"] = l->isRasterized(); // Сохраняем флаг растра
+        lObj["isRasterized"] = l->isRasterized();
 
-        // Сохранение картинки растрового слоя
-        if (l->isRasterized()) {
+        // ИСПРАВЛЕНИЕ: Сохраняем растровую картинку для растрового слоя ИЛИ для маски фильтра
+        if (l->isRasterized() || (l->isFilter() && !l->getRasterImage().isNull())) {
             QByteArray byteArray;
             QBuffer buffer(&byteArray);
             buffer.open(QIODevice::WriteOnly);
@@ -203,16 +203,17 @@ void ProjectManager::loadFromJson(const QString& path) {
 
         l->setVisible(lObj["visible"].toBool(true));
 
-        // ВАЖНО: Восстановление растровой картинки
         bool isRasterized = lObj["isRasterized"].toBool(false);
         if (isRasterized) {
             l->setRasterized(true);
-            if (lObj.contains("raster_image")) {
-                QByteArray byteArray = QByteArray::fromBase64(lObj["raster_image"].toString().toLatin1());
-                QImage img;
-                img.loadFromData(byteArray, "PNG");
-                l->setRasterImage(img);
-            }
+        }
+
+        // ИСПРАВЛЕНИЕ: Загружаем растр, если он есть (и для обычных слоев, и для масок фильтра)
+        if (lObj.contains("raster_image")) {
+            QByteArray byteArray = QByteArray::fromBase64(lObj["raster_image"].toString().toLatin1());
+            QImage img;
+            img.loadFromData(byteArray, "PNG");
+            l->setRasterImage(img);
         }
 
         canvas->addLayer(l);
