@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QCheckBox>
 #include <QDialogButtonBox>
+#include <qmath.h>
 
 #include "include/workspacecontroller.h"
 #include "include/action.h"
@@ -116,7 +117,32 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
         if (event->type() == QEvent::Wheel) {
             QWheelEvent *wEvent = static_cast<QWheelEvent *>(event);
             m_context.view->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-            double factor = (wEvent->angleDelta().y() > 0) ? 1.15 : (1.0 / 1.15);
+
+            double delta = wEvent->angleDelta().y();
+            if (delta == 0) return true;
+
+            // Smooth zoom interpolation via powers
+            double factor = qPow(1.15, delta / 120.0);
+
+            Canvas* canvas = m_context.projectManager->GetCurrentCanvas();
+            double cw = canvas ? canvas->getSize().width() : 800;
+            double ch = canvas ? canvas->getSize().height() : 600;
+            double vw = m_context.view->viewport()->width();
+            double vh = m_context.view->viewport()->height();
+
+            // Limits logic
+            double minScaleW = vw / (10.0 * qMax(1.0, cw));
+            double minScaleH = vh / (10.0 * qMax(1.0, ch));
+            double minScale = qMin(minScaleW, minScaleH);
+            if (minScale <= 0) minScale = 0.01;
+            double maxScale = 150.0;
+
+            double currentScale = m_context.view->transform().m11();
+            double newScale = currentScale * factor;
+
+            if (newScale < minScale) factor = minScale / currentScale;
+            if (newScale > maxScale) factor = maxScale / currentScale;
+
             m_context.view->scale(factor, factor);
             updateTransformBoxScale();
             emit viewportChanged();
@@ -356,10 +382,14 @@ void WorkspaceController::onColorPickedCommit(const QColor& color) {
     if (!selected.isEmpty()) {
         if (Figure* fig = dynamic_cast<Figure*>(selected.first())) {
             FigureState newState = fig->getState();
+            if (m_color_target_is_fill) newState.fill = color; else newState.stroke = color;
+
             if (m_is_previewing) { fig->setState(m_state_before_preview); m_is_previewing = false; }
             m_undo_stack->push(new ModifyFigureCommand(fig, fig->getState(), newState));
         } else if (TextObject* txt = dynamic_cast<TextObject*>(selected.first())) {
             TextState newState = txt->getState();
+            newState.color = color;
+
             if (m_is_previewing) { txt->setState(m_text_state_before_preview); m_is_previewing = false; }
             m_undo_stack->push(new ModifyTextCommand(txt, txt->getState(), newState));
         }

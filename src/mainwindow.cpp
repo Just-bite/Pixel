@@ -107,6 +107,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(m_project_manager, &ProjectManager::projectLoaded, this, [this](){
         if(m_workspace_controller) m_workspace_controller->getUndoStack()->clear();
+        if(m_instrument_pannel_layout) m_instrument_pannel_layout->setActiveTool(InstrumentType::POINTER);
         updateInfoPanel();
         updateWindowTitle();
     });
@@ -248,8 +249,8 @@ MainWindow::~MainWindow() {
     delete ui;
 }
 
-void MainWindow::onZoomIn() { m_view_main->scale(1.15, 1.15); updateInfoPanel(); }
-void MainWindow::onZoomOut() { m_view_main->scale(1.0 / 1.15, 1.0 / 1.15); updateInfoPanel(); }
+void MainWindow::onZoomIn() { onSetAbsoluteZoom(m_view_main->transform().m11() * 1.15); }
+void MainWindow::onZoomOut() { onSetAbsoluteZoom(m_view_main->transform().m11() / 1.15); }
 void MainWindow::onFitToScreen() {
     if (m_view_main->viewport()->width() < 10 || m_view_main->viewport()->height() < 10) return;
     Canvas *canvas = m_project_manager->GetCurrentCanvas();
@@ -261,7 +262,21 @@ void MainWindow::onFitToScreen() {
     updateInfoPanel();
 }
 void MainWindow::onSetAbsoluteZoom(float scale) {
+    Canvas* canvas = m_project_manager->GetCurrentCanvas();
+    double cw = canvas ? canvas->getSize().width() : 800;
+    double ch = canvas ? canvas->getSize().height() : 600;
+    double vw = m_view_main->viewport()->width();
+    double vh = m_view_main->viewport()->height();
+
+    double minScaleW = vw / (10.0 * qMax(1.0, cw));
+    double minScaleH = vh / (10.0 * qMax(1.0, ch));
+    double minScale = qMin(minScaleW, minScaleH);
+    if (minScale <= 0) minScale = 0.01;
+    double maxScale = 150.0;
+
+    double clampedScale = qBound(minScale, (double)scale, maxScale);
+
     m_view_main->resetTransform();
-    m_view_main->scale(scale, scale);
+    m_view_main->scale(clampedScale, clampedScale);
     updateInfoPanel();
 }

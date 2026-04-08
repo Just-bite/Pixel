@@ -4,8 +4,8 @@
 
 InstrumentPannel::InstrumentPannel(QWidget* parent)
     : QWidget(parent)
-, m_instrument_pannel_layout(new QVBoxLayout(parent))
-, m_button_group(new QButtonGroup(parent))
+    , m_instrument_pannel_layout(new QVBoxLayout(parent))
+    , m_button_group(new QButtonGroup(parent))
 {
     m_instrument_pannel_layout->setContentsMargins(2,2,2,2);
     m_instrument_pannel_layout->setSpacing(2);
@@ -28,6 +28,12 @@ InstrumentPannel::InstrumentPannel(QWidget* parent)
 }
 
 const QVBoxLayout& InstrumentPannel::getLayout() const { return *m_instrument_pannel_layout; }
+
+void InstrumentPannel::setActiveTool(InstrumentType type) {
+    if (QAbstractButton* btn = m_button_group->button(static_cast<int>(type))) {
+        btn->setChecked(true);
+    }
+}
 
 void InstrumentPannel::fillInstumentIcon()
 {

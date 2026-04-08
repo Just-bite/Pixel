@@ -406,7 +406,12 @@ void PencilTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, i
     if (density >= 100) {
         Qt::PenCapStyle cap = (noAntiAliasing && radius == 1) ? Qt::SquareCap : Qt::RoundCap;
         p.setPen(QPen(color, radius, Qt::SolidLine, cap, Qt::RoundJoin));
-        p.drawLine(p1, p2);
+        if (p1 == p2) {
+            if (radius <= 1) p.drawPoint(p1);
+            else p.drawLine(p1, p1 + QPointF(0.01, 0)); // Hack for exact point render with RoundCap
+        } else {
+            p.drawLine(p1, p2);
+        }
     } else {
         p.setPen(Qt::NoPen);
         p.setBrush(color);
@@ -519,7 +524,12 @@ void EraserTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, i
     if (density >= 100) {
         Qt::PenCapStyle cap = (noAntiAliasing && radius == 1) ? Qt::SquareCap : Qt::RoundCap;
         p.setPen(QPen(Qt::transparent, radius, Qt::SolidLine, cap, Qt::RoundJoin));
-        p.drawLine(p1, p2);
+        if (p1 == p2) {
+            if (radius <= 1) p.drawPoint(p1);
+            else p.drawLine(p1, p1 + QPointF(0.01, 0));
+        } else {
+            p.drawLine(p1, p2);
+        }
     } else {
         p.setPen(Qt::NoPen);
         p.setBrush(Qt::transparent);
@@ -550,7 +560,9 @@ bool EraserTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx
     m_image_before_stroke = *m_active_layer->getRasterImagePtr();
 
     m_is_drawing = true;
-    m_last_pos = ctx.view->mapToScene(event->pos()).toPoint();
+    QPointF sp = ctx.view->mapToScene(event->pos());
+    m_last_pos = QPoint(qFloor(sp.x()), qFloor(sp.y()));
+
     m_dirty_rect = QRect(m_last_pos.x() - m_radius - 2, m_last_pos.y() - m_radius - 2, m_radius * 2 + 4, m_radius * 2 + 4);
 
     QPainter p(m_active_layer->getRasterImagePtr());
@@ -562,7 +574,9 @@ bool EraserTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx
 bool EraserTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
     if (!(event->buttons() & Qt::LeftButton)) { m_is_drawing = false; return false; }
     if (m_is_drawing && m_active_layer) {
-        QPoint current_pos = ctx.view->mapToScene(event->pos()).toPoint();
+        QPointF sp = ctx.view->mapToScene(event->pos());
+        QPoint current_pos = QPoint(qFloor(sp.x()), qFloor(sp.y()));
+
         QPainter p(m_active_layer->getRasterImagePtr());
         drawStroke(p, m_last_pos, current_pos, m_radius, m_density);
 
@@ -612,7 +626,9 @@ bool FillTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) 
     Layer* activeLayer = ctx.projectManager->GetCurrentCanvas()->getLayers()[ctx.projectManager->GetCurrentCanvas()->getSelectedLayerid()];
     QImage* img = activeLayer->getRasterImagePtr();
 
-    QPoint startPos = ctx.view->mapToScene(event->pos()).toPoint();
+    QPointF sp = ctx.view->mapToScene(event->pos());
+    QPoint startPos = QPoint(qFloor(sp.x()), qFloor(sp.y()));
+
     int w = img->width();
     int h = img->height();
 
