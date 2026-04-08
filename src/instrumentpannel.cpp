@@ -4,8 +4,8 @@
 
 InstrumentPannel::InstrumentPannel(QWidget* parent)
     : QWidget(parent)
-    , m_instrument_pannel_layout(new QVBoxLayout(parent))
-    , m_button_group(new QButtonGroup(parent))
+, m_instrument_pannel_layout(new QVBoxLayout(parent))
+, m_button_group(new QButtonGroup(parent))
 {
     m_instrument_pannel_layout->setContentsMargins(2,2,2,2);
     m_instrument_pannel_layout->setSpacing(2);
@@ -60,13 +60,21 @@ void InstrumentPannel::setButtonsIcons()
     {
         InstrumentType type = static_cast<InstrumentType>(i);
 
+        // ИСПРАВЛЕНИЕ: Скрываем ножницы
+        if (type == InstrumentType::SCISSORS) {
+            m_bttns_instruments[i]->hide();
+            continue;
+        }
+
         if (m_instrument_icon.find(type) != m_instrument_icon.end()) {
             m_bttns_instruments[i]->setIcon(m_instrument_icon[type].first);
             m_bttns_instruments[i]->setToolTip(m_instrument_icon[type].second);
 
+            // ИСПРАВЛЕНИЕ: Разрешаем инструмент FILL
             if (type != InstrumentType::POINTER && type != InstrumentType::HAND &&
                 type != InstrumentType::FIGURE && type != InstrumentType::TEXT &&
-                type != InstrumentType::PENCIL && type != InstrumentType::ERASER) {
+                type != InstrumentType::PENCIL && type != InstrumentType::ERASER &&
+                type != InstrumentType::FILL) {
                 m_bttns_instruments[i]->setEnabled(false);
                 m_bttns_instruments[i]->setToolTip(m_instrument_icon[type].second + " (Not implemented)");
             }

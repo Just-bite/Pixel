@@ -149,4 +149,18 @@ private:
     QRect m_dirty_rect;
 };
 
+// --- ИНСТРУМЕНТ "ЗАЛИВКА" (FILL) ---
+class FillTool : public Tool {
+    Q_OBJECT
+public:
+    explicit FillTool(QObject* parent = nullptr) : Tool(parent) {}
+
+    void onActivate(const WorkspaceContext& ctx) override;
+    bool mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) override;
+    void onColorChanged(const QColor& color, const WorkspaceContext& ctx) override;
+
+private:
+    QColor m_color = Qt::black;
+};
+
 #endif // CONCRETE_TOOLS_H

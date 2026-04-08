@@ -31,6 +31,7 @@ WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* p
     m_tools[InstrumentType::TEXT].reset(new TextTool(this));
     m_tools[InstrumentType::PENCIL].reset(new PencilTool(this));
     m_tools[InstrumentType::ERASER].reset(new EraserTool(this));
+    m_tools[InstrumentType::FILL].reset(new FillTool(this));
 
     if (m_context.view) {
         m_context.view->installEventFilter(this);
@@ -273,11 +274,12 @@ void WorkspaceController::onActiveLayerChanged(int id) {
     if (!canvas) return;
 
     if (id >= 0 && canvas->getLayers()[id]->isFilter()) {
-        m_context.scene->clearSelection(); // Вызовет clearTransformBox внутри PointerTool
+        m_context.scene->clearSelection();
         m_context.contextPannel->setTarget(static_cast<FilterLayer*>(canvas->getLayers()[id]));
-        m_context.contextPannel->setMode(false, false, false, false, false, "Filter Properties");
+        // ИСПРАВЛЕНИЕ: Добавили 6й параметр для setMode
+        m_context.contextPannel->setMode(false, false, false, false, false, false, "Filter Properties");
     } else {
-        setCurrentTool(m_current_tool_type); // Рестарт активного инструмента
+        setCurrentTool(m_current_tool_type);
         onSelectionChanged();
     }
 }

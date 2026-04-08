@@ -15,12 +15,12 @@ PointerTool::PointerTool(QObject* parent) : Tool(parent) {}
 
 void PointerTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::ArrowCursor);
-    onSelectionChanged(ctx); // Восстанавливаем выделение
+    onSelectionChanged(ctx);
 }
 
 void PointerTool::onDeactivate(const WorkspaceContext& ctx) {
     clearTransformBox(ctx);
-    ctx.contextPannel->setMode(false, false, false, false, false, "");
+    ctx.contextPannel->setMode(false, false, false, false, false, false, "");
 }
 
 void PointerTool::clearTransformBox(const WorkspaceContext& ctx) {
@@ -36,8 +36,7 @@ void PointerTool::clearTransformBox(const WorkspaceContext& ctx) {
 void PointerTool::updateContextPanel(const WorkspaceContext& ctx) {
     QList<QGraphicsItem*> selected = ctx.scene->selectedItems();
     if (selected.isEmpty()) {
-        // Здесь ничего не выделено, все флаги false
-        ctx.contextPannel->setMode(false, false, false, false, false, "Pointer");
+        ctx.contextPannel->setMode(false, false, false, false, false, false, "Pointer");
         ctx.contextPannel->setTarget(static_cast<Figure*>(nullptr));
         return;
     }
@@ -51,15 +50,13 @@ void PointerTool::updateContextPanel(const WorkspaceContext& ctx) {
     else if (txt) ctx.contextPannel->setTarget(txt);
     else if (img) ctx.contextPannel->setTarget(img);
 
-    // Здесь передаем fig и txt
-    ctx.contextPannel->setMode(fig != nullptr, txt != nullptr, false, false, false, "Pointer");
+    ctx.contextPannel->setMode(fig != nullptr, txt != nullptr, false, false, false, false, "Pointer");
     if (fig || txt || img) {
         ctx.palettePannel->setColor(ctx.contextPannel->getActiveColor());
     }
 }
 
 void PointerTool::onSelectionChanged(const WorkspaceContext& ctx) {
-    // ЗАЩИТА ОТ РЕКУРСИВНОГО СОЗДАНИЯ TRANSFORM BOX
     if (m_updating_selection) return;
     m_updating_selection = true;
 
@@ -74,7 +71,7 @@ void PointerTool::onSelectionChanged(const WorkspaceContext& ctx) {
         int layerId = canvas->getLayerIdOfObject(obj);
         if (layerId != -1 && canvas->getLayersInfo()[layerId].locked) {
             item->setSelected(false);
-            m_updating_selection = false; // Сбрасываем флаг перед выходом
+            m_updating_selection = false;
             return;
         }
 
@@ -99,7 +96,7 @@ void PointerTool::onSelectionChanged(const WorkspaceContext& ctx) {
     }
     updateContextPanel(ctx);
 
-    m_updating_selection = false; // Сбрасываем флаг в конце
+    m_updating_selection = false;
 }
 
 void PointerTool::onViewScaleChanged(const WorkspaceContext& ctx) {
@@ -115,7 +112,6 @@ void PointerTool::onObjectModified(const WorkspaceContext& ctx) {
 bool PointerTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
     if (event->button() != Qt::LeftButton) return false;
 
-    // Игнорируем клики по самому TransformBox (он обрабатывается сам)
     for (QGraphicsItem* it : ctx.view->items(event->pos())) {
         if (dynamic_cast<TransformBox*>(it)) return false;
     }
@@ -140,7 +136,6 @@ bool PointerTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ct
     if ((m_drag_target_text = dynamic_cast<TextObject*>(targetObj))) m_drag_start_text_state = m_drag_target_text->getState();
     if ((m_drag_target_image = dynamic_cast<ImageObject*>(targetObj))) m_drag_start_image_state = m_drag_target_image->getState();
 
-    // ВОЗВРАЩАЕМ false, ЧТОБЫ QGRAPHICSVIEW САМ НАЧАЛ ПЕРЕТАСКИВАНИЕ ОБЪЕКТА
     return false;
 }
 
@@ -171,10 +166,7 @@ bool PointerTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& 
     m_drag_target_text = nullptr;
     m_drag_target_image = nullptr;
 
-    // ЗАСТАВЛЯЕМ РАМКУ ДОГНАТЬ ОБЪЕКТ ПОСЛЕ ЗАВЕРШЕНИЯ ПЕРЕТАСКИВАНИЯ
     onObjectModified(ctx);
-
-    // ОБЯЗАТЕЛЬНО FALSE, ЧТОБЫ QGRAPHICSVIEW КОРРЕКТНО ВЫШЕЛ ИЗ РЕЖИМА ПЕРЕТАСКИВАНИЯ (ИСПРАВЛЯЕТ ПРЫЖОК В 0,0)
     return false;
 }
 
@@ -190,8 +182,8 @@ bool PointerTool::mouseDoubleClickEvent(QMouseEvent* event, const WorkspaceConte
         bool ok;
         QString newText = QInputDialog::getMultiLineText(ctx.view, "Edit Text", "Enter text:", txt->getState().text, &ok);
         if (ok && !newText.isEmpty()) {
-            TextState newState = txt->getState(); // Копируем старое состояние
-            newState.text = newText;              // Меняем только текст
+            TextState newState = txt->getState();
+            newState.text = newText;
             ctx.undoStack->push(new ModifyTextCommand(txt, txt->getState(), newState));
         }
         return true;
@@ -200,7 +192,6 @@ bool PointerTool::mouseDoubleClickEvent(QMouseEvent* event, const WorkspaceConte
 }
 
 bool PointerTool::keyPressEvent(QKeyEvent* event, const WorkspaceContext& ctx) {
-    // Движение стрелочками
     if (event->key() == Qt::Key_Up || event->key() == Qt::Key_Down || event->key() == Qt::Key_Left || event->key() == Qt::Key_Right) {
         QList<QGraphicsItem*> selected = ctx.scene->selectedItems();
         if (selected.isEmpty()) return false;
@@ -216,14 +207,14 @@ bool PointerTool::keyPressEvent(QKeyEvent* event, const WorkspaceContext& ctx) {
         if (Figure* fig = dynamic_cast<Figure*>(obj)) {
             FigureState s = fig->getState(); s.pos += delta;
             ctx.undoStack->push(new ModifyFigureCommand(fig, fig->getState(), s));
-            onObjectModified(ctx);              // <--- ДОБАВИТЬ СИНХРОНИЗАЦИЮ РАМКИ
-            ctx.contextPannel->setTarget(fig);  // <--- ОБНОВИТЬ ЦИФРЫ В ПАНЕЛИ
+            onObjectModified(ctx);
+            ctx.contextPannel->setTarget(fig);
             return true;
         } else if (TextObject* txt = dynamic_cast<TextObject*>(obj)) {
             TextState s = txt->getState(); s.pos += delta;
             ctx.undoStack->push(new ModifyTextCommand(txt, txt->getState(), s));
-            onObjectModified(ctx);              // <--- ДОБАВИТЬ СИНХРОНИЗАЦИЮ РАМКИ
-            ctx.contextPannel->setTarget(txt);  // <--- ОБНОВИТЬ ЦИФРЫ В ПАНЕЛИ
+            onObjectModified(ctx);
+            ctx.contextPannel->setTarget(txt);
             return true;
         }
     }
@@ -233,7 +224,7 @@ bool PointerTool::keyPressEvent(QKeyEvent* event, const WorkspaceContext& ctx) {
 // ==================== HAND TOOL ====================
 void HandTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::OpenHandCursor);
-    ctx.contextPannel->setMode(false, false, false, false, false, "Hand");
+    ctx.contextPannel->setMode(false, false, false, false, false, false, "Hand");
 }
 
 void HandTool::onDeactivate(const WorkspaceContext& ctx) { ctx.view->setCursor(Qt::ArrowCursor); }
@@ -267,7 +258,7 @@ bool HandTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx
 // ==================== FIGURE TOOL ====================
 void FigureTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::CrossCursor);
-    ctx.contextPannel->setMode(false, false, true, false, false, "Figure");
+    ctx.contextPannel->setMode(false, false, true, false, false, false, "Figure");
 }
 
 bool FigureTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
@@ -312,7 +303,7 @@ bool FigureTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& c
                 delete m_temp_figure;
             } else {
                 ctx.undoStack->push(new AddObjectCommand(m_temp_figure->parentItem(), m_temp_figure));
-                m_temp_figure->setSelected(true); // Передаст управление PointerTool
+                m_temp_figure->setSelected(true);
             }
             m_temp_figure = nullptr;
         }
@@ -324,7 +315,7 @@ bool FigureTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& c
 // ==================== TEXT TOOL ====================
 void TextTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::IBeamCursor);
-    ctx.contextPannel->setMode(false, false, false, true, false, "Text");
+    ctx.contextPannel->setMode(false, false, false, true, false, false, "Text");
 }
 
 bool TextTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
@@ -394,15 +385,15 @@ bool TextTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx
 // ==================== PENCIL TOOL ====================
 void PencilTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::CrossCursor);
-    ctx.contextPannel->setMode(false, false, false, false, true, "Pencil");
-    ctx.contextPannel->setRasterSettings(m_radius, m_density, m_hardness); // Добавили hardness
+    ctx.contextPannel->setMode(false, false, false, false, true, false, "Pencil");
+    ctx.contextPannel->setRasterSettings(m_radius, m_density, m_hardness);
     ctx.palettePannel->setColor(m_color);
 }
 
 void PencilTool::onRasterSettingsChanged(const WorkspaceContext& ctx) {
     m_radius = ctx.contextPannel->getRasterRadius();
     m_density = ctx.contextPannel->getRasterDensity();
-    m_hardness = ctx.contextPannel->getRasterHardness(); // Добавили
+    m_hardness = ctx.contextPannel->getRasterHardness();
 }
 
 void PencilTool::onColorChanged(const QColor& color, const WorkspaceContext& ctx) {
@@ -410,20 +401,15 @@ void PencilTool::onColorChanged(const QColor& color, const WorkspaceContext& ctx
 }
 
 void PencilTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density, const QColor& color) {
-    bool pixelPerfect = (m_hardness >= 100 && radius == 1);
-    p.setRenderHint(QPainter::Antialiasing, !pixelPerfect);
+    // ИСПРАВЛЕНИЕ: Отключаем сглаживание, если hardness 100, чтобы не было "мусора" при заливке
+    bool noAntiAliasing = (m_hardness >= 100);
+    p.setRenderHint(QPainter::Antialiasing, !noAntiAliasing);
 
     if (density >= 100) {
-        if (pixelPerfect) {
-            // ИСПРАВЛЕНИЕ: Идеальная 1px линия без плавания
-            p.setPen(QPen(color, 1, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin)); // SquareCap решает проблему!
-            p.drawLine(p1.toPoint(), p2.toPoint());
-        } else {
-            p.setPen(QPen(color, radius, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-            p.drawLine(p1, p2);
-        }
+        Qt::PenCapStyle cap = (noAntiAliasing && radius == 1) ? Qt::SquareCap : Qt::RoundCap;
+        p.setPen(QPen(color, radius, Qt::SolidLine, cap, Qt::RoundJoin));
+        p.drawLine(p1, p2);
     } else {
-        // Режим спрея (без изменений)
         p.setPen(Qt::NoPen);
         p.setBrush(color);
         int steps = qMax(1.0, QLineF(p1, p2).length());
@@ -455,14 +441,12 @@ bool PencilTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx
 
     m_active_layer = ctx.projectManager->GetCurrentCanvas()->getLayers()[ctx.projectManager->GetCurrentCanvas()->getSelectedLayerid()];
 
-    // Сохраняем временную полную копию только на время мазка
     m_image_before_stroke = *m_active_layer->getRasterImagePtr();
 
     m_is_drawing = true;
     QPointF scenePos = ctx.view->mapToScene(event->pos());
     m_last_pos = QPoint(qFloor(scenePos.x()), qFloor(scenePos.y()));
 
-    // Инициализируем грязный прямоугольник (с небольшим запасом)
     m_dirty_rect = QRect(m_last_pos.x() - m_radius - 2, m_last_pos.y() - m_radius - 2, m_radius * 2 + 4, m_radius * 2 + 4);
 
     QPainter p(m_active_layer->getRasterImagePtr());
@@ -484,7 +468,6 @@ bool PencilTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx)
         QPainter p(m_active_layer->getRasterImagePtr());
         drawStroke(p, m_last_pos, current_pos, m_radius, m_density, m_color);
 
-        // Расширяем грязный прямоугольник
         QRect updateRect(current_pos.x() - m_radius - 2, current_pos.y() - m_radius - 2, m_radius * 2 + 4, m_radius * 2 + 4);
         m_dirty_rect = m_dirty_rect.united(updateRect);
 
@@ -499,18 +482,16 @@ bool PencilTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& c
     if (m_is_drawing && event->button() == Qt::LeftButton) {
         m_is_drawing = false;
 
-        // Ограничиваем рамку размером холста
         m_dirty_rect = m_dirty_rect.intersected(m_active_layer->getRasterImagePtr()->rect());
 
         if (!m_dirty_rect.isEmpty()) {
-            // Вырезаем только маленькие дельты!
             QImage oldSub = m_image_before_stroke.copy(m_dirty_rect);
             QImage newSub = m_active_layer->getRasterImagePtr()->copy(m_dirty_rect);
 
             ctx.undoStack->push(new RasterStrokeCommand(m_active_layer, m_dirty_rect, oldSub, newSub));
         }
 
-        m_image_before_stroke = QImage(); // Очищаем гигантскую времянку из памяти
+        m_image_before_stroke = QImage();
         m_active_layer = nullptr;
         return true;
     }
@@ -521,7 +502,7 @@ bool PencilTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& c
 // ==================== ERASER TOOL ====================
 void EraserTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::CrossCursor);
-    ctx.contextPannel->setMode(false, false, false, false, true, "Eraser");
+    ctx.contextPannel->setMode(false, false, false, false, true, false, "Eraser");
     ctx.contextPannel->setRasterSettings(m_radius, m_density, m_hardness);
 }
 
@@ -533,10 +514,14 @@ void EraserTool::onRasterSettingsChanged(const WorkspaceContext& ctx) {
 
 void EraserTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density) {
     p.setCompositionMode(QPainter::CompositionMode_Clear);
-    p.setRenderHint(QPainter::Antialiasing, m_hardness < 100 && radius > 1); // То же самое для ластика
+
+    // ИСПРАВЛЕНИЕ: Отключаем сглаживание
+    bool noAntiAliasing = (m_hardness >= 100);
+    p.setRenderHint(QPainter::Antialiasing, !noAntiAliasing);
 
     if (density >= 100) {
-        p.setPen(QPen(Qt::transparent, radius, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        Qt::PenCapStyle cap = (noAntiAliasing && radius == 1) ? Qt::SquareCap : Qt::RoundCap;
+        p.setPen(QPen(Qt::transparent, radius, Qt::SolidLine, cap, Qt::RoundJoin));
         p.drawLine(p1, p2);
     } else {
         p.setPen(Qt::NoPen);
@@ -608,4 +593,110 @@ bool EraserTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& c
         return true;
     }
     return false;
+}
+
+// ==================== FILL TOOL ====================
+void FillTool::onActivate(const WorkspaceContext& ctx) {
+    ctx.view->setCursor(Qt::CrossCursor);
+    ctx.contextPannel->setMode(false, false, false, false, false, true, "Fill");
+    ctx.palettePannel->setColor(m_color);
+}
+
+void FillTool::onColorChanged(const QColor& color, const WorkspaceContext& ctx) {
+    m_color = color;
+}
+
+bool FillTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
+    if (event->button() != Qt::LeftButton) return false;
+
+    RasterizeResult res = ctx.controller->prepareRasterLayer();
+    if (res == RasterizeResult::Cancelled || res == RasterizeResult::RasterizedNow) return false;
+
+    Layer* activeLayer = ctx.projectManager->GetCurrentCanvas()->getLayers()[ctx.projectManager->GetCurrentCanvas()->getSelectedLayerid()];
+    QImage* img = activeLayer->getRasterImagePtr();
+
+    QPoint startPos = ctx.view->mapToScene(event->pos()).toPoint();
+    int w = img->width();
+    int h = img->height();
+
+    if (startPos.x() < 0 || startPos.x() >= w || startPos.y() < 0 || startPos.y() >= h) return false;
+
+    if (img->format() != QImage::Format_ARGB32_Premultiplied && img->format() != QImage::Format_ARGB32) {
+        *img = img->convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    }
+
+    // ИСПРАВЛЕНИЕ: Глубокая копия ДО получения сырого указателя img->bits()
+    QImage oldImage = img->copy();
+
+    QRgb* data = reinterpret_cast<QRgb*>(img->bits());
+    int pixelsPerLine = img->bytesPerLine() / 4;
+
+    QRgb targetRgba = data[startPos.y() * pixelsPerLine + startPos.x()];
+    QColor targetColor = QColor::fromRgba(targetRgba);
+    QRgb fillRgba = m_color.rgba();
+
+    int tolerance = ctx.contextPannel->getFillTolerance();
+
+    if (tolerance == 0 && targetRgba == fillRgba) return true;
+
+    std::vector<bool> visited(w * h, false);
+    std::vector<QPoint> stack;
+
+    stack.reserve(w * h / 4);
+    stack.push_back(startPos);
+    visited[startPos.y() * w + startPos.x()] = true;
+
+    int minX = startPos.x(), maxX = startPos.x();
+    int minY = startPos.y(), maxY = startPos.y();
+
+    auto colorMatch = [targetColor, tolerance](QRgb c) {
+        if (tolerance == 0) return c == targetColor.rgba();
+        QColor qc = QColor::fromRgba(c);
+        return std::abs(qc.red() - targetColor.red()) <= tolerance &&
+               std::abs(qc.green() - targetColor.green()) <= tolerance &&
+               std::abs(qc.blue() - targetColor.blue()) <= tolerance &&
+               std::abs(qc.alpha() - targetColor.alpha()) <= tolerance;
+    };
+
+    while (!stack.empty()) {
+        QPoint p = stack.back();
+        stack.pop_back();
+
+        int x = p.x();
+        int y = p.y();
+
+        data[y * pixelsPerLine + x] = fillRgba;
+
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+
+        const int dx[] = {1, -1, 0, 0};
+        const int dy[] = {0, 0, 1, -1};
+
+        for (int i = 0; i < 4; ++i) {
+            int nx = x + dx[i];
+            int ny = y + dy[i];
+
+            if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                int idx = ny * w + nx;
+                if (!visited[idx]) {
+                    visited[idx] = true;
+                    if (colorMatch(data[ny * pixelsPerLine + nx])) {
+                        stack.push_back(QPoint(nx, ny));
+                    }
+                }
+            }
+        }
+    }
+
+    QRect dirtyRect(minX, minY, maxX - minX + 1, maxY - minY + 1);
+    QImage oldSub = oldImage.copy(dirtyRect);
+    QImage newSub = img->copy(dirtyRect);
+
+    ctx.undoStack->push(new RasterStrokeCommand(activeLayer, dirtyRect, oldSub, newSub));
+    activeLayer->updateRasterArea(dirtyRect);
+
+    return true;
 }
