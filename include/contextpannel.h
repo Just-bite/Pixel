@@ -15,12 +15,13 @@
 #include "object.h"
 #include "filterlayer.h"
 
-class ContextPannel : public QWidget {
+    class ContextPannel : public QWidget {
     Q_OBJECT
 public:
     explicit ContextPannel(QWidget* parent = nullptr);
 
-    void setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, bool isRasterTool, const QString& toolName = "");
+    // Добавлен аргумент isFillTool
+    void setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, bool isRasterTool, bool isFillTool, const QString& toolName = "");
 
     void setTarget(Figure* figure);
     void setTarget(TextObject* textObj);
@@ -42,6 +43,7 @@ public:
     int getRasterRadius() const { return m_raster_radius->value(); }
     int getRasterDensity() const { return m_raster_density->value(); }
     int getRasterHardness() const { return m_raster_hardness->value(); }
+    int getFillTolerance() const { return m_fill_tolerance->value(); }
 
 signals:
     void propertyChanged();
@@ -93,11 +95,14 @@ private:
     FilterLayer* m_current_filter_target = nullptr;
     std::vector<QDoubleSpinBox*> m_filter_param_boxes;
 
-    // ИЗМЕНЕНИЕ: Группа для растровых инструментов
     QGroupBox *m_raster_group;
     QSpinBox *m_raster_radius;
     QSpinBox *m_raster_density;
     QSpinBox *m_raster_hardness;
+
+    // Группа заливки
+    QGroupBox *m_fill_group;
+    QSpinBox *m_fill_tolerance;
 
     void rebuildFilterParamsUI(FilterType type);
 };

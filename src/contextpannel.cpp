@@ -80,7 +80,15 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     addLabeledWidget(raster_layout, "Density %:", m_raster_density);
     addLabeledWidget(raster_layout, "Hardness %:", m_raster_hardness);
 
-    // --- Группа Фильтра ---
+    // Добавляем группу заливки
+    m_fill_group = new QGroupBox("Fill", this);
+    QHBoxLayout* fill_layout = new QHBoxLayout(m_fill_group);
+    fill_layout->setContentsMargins(5, 5, 5, 5);
+    m_fill_tolerance = new QSpinBox(this);
+    m_fill_tolerance->setRange(0, 255);
+    m_fill_tolerance->setValue(0);
+    addLabeledWidget(fill_layout, "Tolerance:", m_fill_tolerance);
+
     m_filter_group = new QGroupBox("Filter", this);
     QHBoxLayout* filter_layout = new QHBoxLayout(m_filter_group);
     filter_layout->setContentsMargins(5, 5, 5, 5);
@@ -109,6 +117,7 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     main_layout->addWidget(m_layer_group);
     main_layout->addWidget(m_text_group);
     main_layout->addWidget(m_raster_group);
+    main_layout->addWidget(m_fill_group);
     main_layout->addWidget(m_filter_group);
     main_layout->addStretch();
 
@@ -145,7 +154,7 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
 
     connect(m_filter_type_box, comboSignal, this, &ContextPannel::onFilterTypeChanged);
 
-    setMode(false, false, false, false, "Pointer");
+    setMode(false, false, false, false, false, false, "Pointer");
 }
 
 void ContextPannel::addLabeledWidget(QHBoxLayout* layout, const QString& text, QWidget* widget) {
@@ -158,7 +167,7 @@ QDoubleSpinBox* ContextPannel::createSpinBox(double min, double max) {
     return sb;
 }
 
-void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, bool isRasterTool, const QString& toolName) {
+void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, bool isRasterTool, bool isFillTool, const QString& toolName) {
     bool isFilterSel = (m_current_filter_target != nullptr);
     bool isImgSel = (m_current_image_target != nullptr);
     bool somethingSelected = isFigSel || isTextSel || isImgSel || isFilterSel;
@@ -168,11 +177,12 @@ void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool 
     m_style_group->setVisible((isFigSel || isFigTool) && !isFilterSel);
     m_text_group->setVisible((isTextSel || isTextTool) && !isFilterSel);
     m_raster_group->setVisible(isRasterTool);
+    m_fill_group->setVisible(isFillTool);
     m_layer_group->setVisible(somethingSelected);
 
-    // Плейсхолдер виден ТОЛЬКО если все панели скрыты
     bool anyGroupVisible = m_filter_group->isVisible() || m_geometry_group->isVisible() ||
-                           m_style_group->isVisible() || m_text_group->isVisible() || m_raster_group->isVisible();
+                           m_style_group->isVisible() || m_text_group->isVisible() ||
+                           m_raster_group->isVisible() || m_fill_group->isVisible();
 
     m_lbl_placeholder->setVisible(!anyGroupVisible);
 
@@ -195,6 +205,8 @@ void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool 
         blockSignals(false);
     }
 }
+
+// ... остальная часть файла без изменений, не забудьте оставить реализацию остальных методов (setTarget, getUIState и т.д.)
 
 void ContextPannel::setTarget(Figure* figure) {
     m_current_target = figure; m_current_text_target = nullptr;
@@ -249,7 +261,6 @@ void ContextPannel::setTarget(FilterLayer* filterObj) {
     m_filter_type_box->setCurrentIndex(m_filter_type_box->findData(static_cast<int>(s.type)));
     rebuildFilterParamsUI(s.type);
 
-    // Заполняем созданные ползунки значениями
     for (size_t i = 0; i < m_filter_param_boxes.size() && i < s.params.size(); ++i) {
         m_filter_param_boxes[i]->setValue(s.params[i]);
     }
@@ -257,7 +268,6 @@ void ContextPannel::setTarget(FilterLayer* filterObj) {
 }
 
 void ContextPannel::rebuildFilterParamsUI(FilterType type) {
-    // Очищаем старые параметры
     QLayoutItem *child;
     while ((child = m_filter_params_layout->takeAt(0)) != nullptr) {
         if (child->widget()) child->widget()->deleteLater();
@@ -265,7 +275,6 @@ void ContextPannel::rebuildFilterParamsUI(FilterType type) {
     }
     m_filter_param_boxes.clear();
 
-    // Создаем новые
     std::vector<FilterParamInfo> infos = FilterFactory::getParamInfo(type);
     for (const auto& info : infos) {
         m_filter_params_layout->addWidget(new QLabel(info.name + ":", this));
