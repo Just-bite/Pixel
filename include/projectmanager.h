@@ -15,7 +15,6 @@ public:
     Project* getCurrentProject() { return m_selected_project; }
     void createProject();
 
-    // Новые методы контроля состояния проекта
     bool promptSaveIfModified();
     void setModified(bool modified) { m_is_modified = modified; }
     QString getCurrentFilePath() const { return m_current_file_path; }
@@ -25,7 +24,6 @@ signals:
     void projectLoaded();
     void layersUpdated();
 
-    // Новые сигналы для UI и синхронизации
     void statusMessage(const QString& msg);
     void projectSaved();
 
@@ -43,7 +41,7 @@ private:
     std::vector<Project*> m_projects;
     Project* m_selected_project;
     QString m_current_file_path;
-    bool m_is_modified = false; // Флаг измененного проекта
+    bool m_is_modified = false;
 };
 
 #endif // PROJECTMANAGER_H

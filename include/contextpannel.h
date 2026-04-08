@@ -14,14 +14,15 @@
 
 #include "object.h"
 #include "filterlayer.h"
+#include "instrumentpannel.h"
 
-    class ContextPannel : public QWidget {
+class ContextPannel : public QWidget {
     Q_OBJECT
 public:
     explicit ContextPannel(QWidget* parent = nullptr);
 
-    // Добавлен аргумент isFillTool
-    void setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, bool isRasterTool, bool isFillTool, const QString& toolName = "");
+    void setActiveTool(InstrumentType tool);
+    void clearTargets();
 
     void setTarget(Figure* figure);
     void setTarget(TextObject* textObj);
@@ -61,9 +62,12 @@ private slots:
     void onMoveDownClicked();
 
 private:
+    void updateUI();
     void updateColorButtonsUI();
     QDoubleSpinBox* createSpinBox(double min, double max);
     void addLabeledWidget(QHBoxLayout* layout, const QString& text, QWidget* widget);
+
+    InstrumentType m_current_tool = InstrumentType::POINTER;
 
     QLabel* m_lbl_placeholder;
     QGroupBox *m_geometry_group, *m_style_group;
@@ -100,7 +104,6 @@ private:
     QSpinBox *m_raster_density;
     QSpinBox *m_raster_hardness;
 
-    // Группа заливки
     QGroupBox *m_fill_group;
     QSpinBox *m_fill_tolerance;
 

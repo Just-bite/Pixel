@@ -25,8 +25,7 @@ private:
     QImage m_new_raster_image;
     QImage m_old_raster_image;
     bool m_was_rasterized;
-
-    bool m_is_active; // Флаг для контроля памяти
+    bool m_is_active;
 };
 
 class RasterStrokeCommand : public QUndoCommand {
@@ -36,9 +35,9 @@ public:
     void redo() override;
 private:
     Layer* m_layer;
-    QRect m_rect;          // <--- ДОБАВЛЕНО (Координаты измененной области)
-    QImage m_old_image;    // Теперь это маленький вырезанный кусочек
-    QImage m_new_image;    // И это тоже
+    QRect m_rect;
+    QImage m_old_image;
+    QImage m_new_image;
 };
 
 #endif // RASTER_ACTION_H

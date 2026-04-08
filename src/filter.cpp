@@ -6,7 +6,6 @@
 #include <QGraphicsBlurEffect>
 #include <QColor>
 
-// --- None Filter ---
 class NoneFilter : public BaseFilter {
 public:
     FilterType getType() const override { return FilterType::None; }
@@ -14,7 +13,6 @@ public:
     QImage apply(const QImage& input, const std::vector<float>&) override { return input; }
 };
 
-// --- Grayscale Filter ---
 class GrayscaleFilter : public BaseFilter {
 public:
     FilterType getType() const override { return FilterType::Grayscale; }
@@ -32,7 +30,6 @@ public:
     }
 };
 
-// --- Invert Filter ---
 class InvertFilter : public BaseFilter {
 public:
     FilterType getType() const override { return FilterType::Invert; }
@@ -44,7 +41,6 @@ public:
     }
 };
 
-// --- Brightness / Contrast Filter ---
 class BrightnessContrastFilter : public BaseFilter {
 public:
     FilterType getType() const override { return FilterType::BrightnessContrast; }
@@ -73,7 +69,6 @@ public:
     }
 };
 
-// --- Blur Filter ---
 class BlurFilter : public BaseFilter {
 public:
     FilterType getType() const override { return FilterType::Blur; }
@@ -95,7 +90,6 @@ public:
     }
 };
 
-// --- Threshold Filter ---
 class ThresholdFilter : public BaseFilter {
 public:
     FilterType getType() const override { return FilterType::Threshold; }
@@ -117,7 +111,6 @@ public:
     }
 };
 
-// --- HSL Filter ---
 class HSLFilter : public BaseFilter {
 public:
     FilterType getType() const override { return FilterType::HSL; }
@@ -153,17 +146,15 @@ public:
     }
 };
 
-// --- Sharpen Filter ---
 class SharpenFilter : public BaseFilter {
 public:
     FilterType getType() const override { return FilterType::Sharpen; }
     std::vector<FilterParamInfo> getParamInfo() const override { return { {"Strength", 0.0f, 10.0f, 0.0f} }; }
     QImage apply(const QImage& input, const std::vector<float>& params) override {
         if (params.empty() || params[0] <= 0.0f) return input;
-        float strength = params[0] / 2.0f; // Уменьшим агрессивность
+        float strength = params[0] / 2.0f;
         QImage res = input;
 
-        // Матрица свертки (упрощенная)
         float kernel[3][3] = {
             { 0, -strength, 0 },
             { -strength, 1.0f + 4.0f * strength, -strength },
@@ -189,7 +180,6 @@ public:
     }
 };
 
-// --- Factory Implementation (C++11 compatible) ---
 std::unique_ptr<BaseFilter> FilterFactory::createFilter(FilterType type) {
     switch (type) {
     case FilterType::Grayscale: return std::unique_ptr<BaseFilter>(new GrayscaleFilter());

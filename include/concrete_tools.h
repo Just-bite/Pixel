@@ -7,7 +7,6 @@
 #include <QPoint>
 #include "layer.h"
 
-// --- ИНСТРУМЕНТ "УКАЗАТЕЛЬ" (POINTER) ---
 class PointerTool : public Tool {
     Q_OBJECT
 public:
@@ -43,7 +42,7 @@ private:
     ImageState m_drag_start_image_state;
 };
 
-// --- ИНСТРУМЕНТ "РУКА" (HAND) ---
+
 class HandTool : public Tool {
     Q_OBJECT
 public:
@@ -61,7 +60,7 @@ private:
     QPoint m_last_pan_pos;
 };
 
-// --- ИНСТРУМЕНТ "ФИГУРА" (FIGURE) ---
+
 class FigureTool : public Tool {
     Q_OBJECT
 public:
@@ -78,7 +77,7 @@ private:
     Figure* m_temp_figure = nullptr;
 };
 
-// --- ИНСТРУМЕНТ "ТЕКСТ" (TEXT) ---
+
 class TextTool : public Tool {
     Q_OBJECT
 public:
@@ -95,7 +94,7 @@ private:
     TextObject* m_temp_text = nullptr;
 };
 
-// --- ИНСТРУМЕНТ "КАРАНДАШ" (PENCIL) ---
+
 class PencilTool : public Tool {
     Q_OBJECT
 public:
@@ -123,7 +122,7 @@ private:
     QColor m_color = Qt::black;
 };
 
-// --- ИНСТРУМЕНТ "ЛАСТИК" (ERASER) ---
+
 class EraserTool : public Tool {
     Q_OBJECT
 public:
@@ -149,7 +148,7 @@ private:
     QRect m_dirty_rect;
 };
 
-// --- ИНСТРУМЕНТ "ЗАЛИВКА" (FILL) ---
+
 class FillTool : public Tool {
     Q_OBJECT
 public:
