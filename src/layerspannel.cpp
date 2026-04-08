@@ -3,6 +3,9 @@
 #include <QStyleOption>
 #include <QMouseEvent>
 #include <QScrollBar>
+#include <QIcon>
+
+#define RESOURCE_PATH_PREFIX ":/application_icon/resources/"
 
 LayerWidget::LayerWidget(QWidget* parent) : QWidget(parent) {
     setFixedHeight(32);
@@ -12,11 +15,30 @@ LayerWidget::LayerWidget(QWidget* parent) : QWidget(parent) {
     m_layout->setSpacing(3);
     m_layout->setContentsMargins(2, 2, 2, 2);
 
-    m_lock_btn = new QPushButton("L"); m_lock_btn->setCheckable(true);
-    m_eye_btn = new QPushButton("V");  m_eye_btn->setCheckable(true);
-    m_up_btn = new QPushButton("u");
-    m_down_btn = new QPushButton("d");
-    m_delete_btn = new QPushButton("-");
+    m_lock_btn = new QPushButton();
+    QIcon lockIcon;
+    setIsFilter(false);
+
+    m_eye_btn = new QPushButton();
+    m_eye_btn->setCheckable(true);
+    QIcon eyeIcon;
+    eyeIcon.addFile(RESOURCE_PATH_PREFIX "eye-opened.svg", QSize(), QIcon::Normal, QIcon::Off);
+    eyeIcon.addFile(RESOURCE_PATH_PREFIX "eye-closed.svg",  QSize(), QIcon::Normal, QIcon::On);
+    m_eye_btn->setIcon(eyeIcon);
+    m_eye_btn->setToolTip("Toggle visibility");
+
+    m_up_btn = new QPushButton();
+    m_up_btn->setIcon(QIcon(RESOURCE_PATH_PREFIX "up-arrow.svg"));
+    m_up_btn->setToolTip("Move layer up");
+
+    m_down_btn = new QPushButton();
+    m_down_btn->setIcon(QIcon(RESOURCE_PATH_PREFIX "down-arrow.svg"));
+    m_down_btn->setToolTip("Move layer down");
+
+    m_delete_btn = new QPushButton();
+    m_delete_btn->setIcon(QIcon(RESOURCE_PATH_PREFIX "trash-bin.svg"));
+    m_delete_btn->setToolTip("Delete layer");
+
 
     for (QPushButton* b : {m_lock_btn, m_eye_btn, m_down_btn, m_up_btn, m_delete_btn}) {
         b->setFixedSize(BTN_SIZE, BTN_SIZE);
@@ -55,16 +77,20 @@ void LayerWidget::setName(const QString& name) {
 
 void LayerWidget::setIsFilter(bool isF) {
     if (isF) {
-        m_lock_btn->setText("M");
-        m_lock_btn->setStyleSheet("font-weight: bold; color: #4a6b8f;");
+        m_lock_btn->setIcon(QIcon(RESOURCE_PATH_PREFIX "mask-happy.svg"));
         m_lock_btn->setCheckable(true);
+        m_lock_btn->setToolTip("Edit filter mask");
 
         m_lock_btn->disconnect();
         connect(m_lock_btn, &QPushButton::toggled, this, &LayerWidget::onMaskToggled);
     } else {
-        m_lock_btn->setText("L");
-        m_lock_btn->setStyleSheet("");
+        QIcon lockIcon;
         m_lock_btn->setCheckable(true);
+        lockIcon.addFile(RESOURCE_PATH_PREFIX "lock-opened.svg", QSize(), QIcon::Normal, QIcon::Off);
+        lockIcon.addFile(RESOURCE_PATH_PREFIX "lock-closed.svg",  QSize(), QIcon::Normal, QIcon::On);
+        m_lock_btn->setIcon(lockIcon);
+        m_lock_btn->setCheckable(true);
+        m_lock_btn->setToolTip("Toggle lock");
 
         m_lock_btn->disconnect();
         connect(m_lock_btn, &QPushButton::toggled, this, &LayerWidget::onLockedToggled);

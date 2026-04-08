@@ -1,5 +1,7 @@
 #include "include\contextpannel.h"
 
+#define RESOURCE_PATH_PREFIX ":/application_icon/resources/"
+
 ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     setMinimumHeight(65);
     setMaximumHeight(65);
@@ -53,10 +55,15 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_layer_group = new QWidget(this);
     QHBoxLayout* layer_layout = new QHBoxLayout(m_layer_group);
     layer_layout->setContentsMargins(5, 10, 5, 5);
-    m_btn_layer_down = new QPushButton("Dn", this);
-    m_btn_layer_down->setFixedSize(45, 26);
-    m_btn_layer_up = new QPushButton("Up", this);
-    m_btn_layer_up->setFixedSize(45, 26);
+    m_btn_layer_down = new QPushButton(this);
+    m_btn_layer_down->setIcon(QIcon(RESOURCE_PATH_PREFIX "down-arrow.svg"));
+    m_btn_layer_down->setToolTip("Move down a layer");
+    m_btn_layer_down->setFixedSize(30, 30);
+    m_btn_layer_up = new QPushButton(this);
+    m_btn_layer_up->setIcon(QIcon(RESOURCE_PATH_PREFIX "up-arrow.svg"));
+    m_btn_layer_up->setToolTip("Move up a layer");
+    m_btn_layer_up->setFixedSize(30, 30);
+
     layer_layout->addWidget(m_btn_layer_down);
     layer_layout->addWidget(m_btn_layer_up);
 
@@ -177,7 +184,7 @@ void ContextPannel::updateUI() {
     m_text_group->setVisible((isTextSel || isTextTool) && !isFilterSel);
     m_raster_group->setVisible(isRasterTool);
     m_fill_group->setVisible(isFillTool);
-    m_layer_group->setVisible(somethingSelected);
+    m_layer_group->setVisible(somethingSelected & !isFilterSel);
 
     bool anyGroupVisible = m_filter_group->isVisible() || m_geometry_group->isVisible() ||
                            m_style_group->isVisible() || m_text_group->isVisible() ||

@@ -6,11 +6,19 @@
         <file>resources/hand.svg</file>
         <file>resources/main_icon.jpg</file>
         <file>resources/pencil.svg</file>
-        <file>resources/rubber.png</file>
         <file>resources/scissors.svg</file>
         <file>resources/figure.svg</file>
         <file>resources/palette.svg</file>
         <file>resources/pipette.svg</file>
         <file>resources/rubber.svg</file>
+        <file>resources/down-arrow.svg</file>
+        <file>resources/eye-closed.svg</file>
+        <file>resources/eye-opened.svg</file>
+        <file>resources/lock-closed.svg</file>
+        <file>resources/lock-opened.svg</file>
+        <file>resources/up-arrow.svg</file>
+        <file>resources/mask-happy.svg</file>
+        <file>resources/trash-bin.svg</file>
+        <file>resources/fit-to-screen.svg</file>
     </qresource>
 </RCC>

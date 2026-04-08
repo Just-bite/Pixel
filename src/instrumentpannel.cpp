@@ -1,6 +1,6 @@
 #include "include\instrumentpannel.h"
 
-#define SVG_PATH_PREFIX ":/application_icon/resources/"
+#define RESOURCE_PATH_PREFIX ":/application_icon/resources/"
 
 InstrumentPannel::InstrumentPannel(QWidget* parent)
     : QWidget(parent)
@@ -37,15 +37,15 @@ void InstrumentPannel::setActiveTool(InstrumentType type) {
 
 void InstrumentPannel::fillInstumentIcon()
 {
-    m_instrument_icon[InstrumentType::HAND] = {QIcon(SVG_PATH_PREFIX "hand.svg"), QString("Hand (H)")};
-    m_instrument_icon[InstrumentType::PENCIL] = {QIcon(SVG_PATH_PREFIX "pencil.svg"), QString("Pencil (P)")};
-    m_instrument_icon[InstrumentType::ERASER] = {QIcon(SVG_PATH_PREFIX "rubber.svg"), QString("Eraser (E)")};
-    m_instrument_icon[InstrumentType::SCISSORS] = {QIcon(SVG_PATH_PREFIX "scissors.svg"), QString("Scissors")};
-    m_instrument_icon[InstrumentType::FILL] = {QIcon(SVG_PATH_PREFIX "bucket.svg"), QString("Fill (B)")};
-    m_instrument_icon[InstrumentType::POINTER] = {QIcon(SVG_PATH_PREFIX "arrow.svg"), QString("Pointer (I)")};
-    m_instrument_icon[InstrumentType::TEXT] = {QIcon(SVG_PATH_PREFIX "font.svg"), QString("Text (T)")};
-    m_instrument_icon[InstrumentType::FIGURE] = {QIcon(SVG_PATH_PREFIX "figure.svg"), QString("Figure (F)")};
-    m_instrument_icon[InstrumentType::PIPETTE] = {QIcon(SVG_PATH_PREFIX "pipette.svg"), QString("Pipette (Alt)")};
+    m_instrument_icon[InstrumentType::HAND] = {QIcon(RESOURCE_PATH_PREFIX "hand.svg"), QString("Hand (H)")};
+    m_instrument_icon[InstrumentType::PENCIL] = {QIcon(RESOURCE_PATH_PREFIX "pencil.svg"), QString("Pencil (P)")};
+    m_instrument_icon[InstrumentType::ERASER] = {QIcon(RESOURCE_PATH_PREFIX "rubber.svg"), QString("Eraser (E)")};
+    m_instrument_icon[InstrumentType::SCISSORS] = {QIcon(RESOURCE_PATH_PREFIX "scissors.svg"), QString("Scissors")};
+    m_instrument_icon[InstrumentType::FILL] = {QIcon(RESOURCE_PATH_PREFIX "bucket.svg"), QString("Fill (B)")};
+    m_instrument_icon[InstrumentType::POINTER] = {QIcon(RESOURCE_PATH_PREFIX "arrow.svg"), QString("Pointer (I)")};
+    m_instrument_icon[InstrumentType::TEXT] = {QIcon(RESOURCE_PATH_PREFIX "font.svg"), QString("Text (T)")};
+    m_instrument_icon[InstrumentType::FIGURE] = {QIcon(RESOURCE_PATH_PREFIX "figure.svg"), QString("Figure (F)")};
+    m_instrument_icon[InstrumentType::PIPETTE] = {QIcon(RESOURCE_PATH_PREFIX "pipette.svg"), QString("Pipette (Alt)")};
 }
 
 void InstrumentPannel::createButtonsArray(QWidget* parent)
