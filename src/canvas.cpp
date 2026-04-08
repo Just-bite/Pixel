@@ -5,12 +5,12 @@
 
 Canvas::Canvas(QObject* parent)
     : QObject(parent),
-m_parent_sceene(nullptr),
-m_selected(nullptr),
-m_selected_index(-1),
-m_canvas_size(800, 600),
-m_bg_item(nullptr),
-m_layer_counter(1) {}
+    m_parent_sceene(nullptr),
+    m_selected(nullptr),
+    m_selected_index(-1),
+    m_canvas_size(800, 600),
+    m_bg_item(nullptr),
+    m_layer_counter(1) {}
 
 void Canvas::addLayer(Layer* layer) {
     if (!layer)
@@ -88,6 +88,12 @@ void Canvas::moveLayer(int id, int shift) {
 
 void Canvas::selectLayer(int id) {
     if (!ID_IN_BOUNDS(id)) return;
+
+    // ИСПРАВЛЕНИЕ: Выходим из режима маски, если выбрали другой слой
+    if (m_mask_edit_layer_id != -1 && m_mask_edit_layer_id != id) {
+        setMaskEditingMode(m_mask_edit_layer_id, false);
+    }
+
     m_selected_index = id;
     m_selected = m_layers[id];
     emit activeLayerChanged(id);
@@ -255,4 +261,51 @@ QImage Canvas::renderLayerToImage(int id) {
     for (QGraphicsItem* item : hidden_ui) item->setVisible(true);
 
     return buffer;
+}
+
+void Canvas::setMaskEditingMode(int id, bool active) {
+    if (!ID_IN_BOUNDS(id)) return;
+    Layer* targetLayer = m_layers[id];
+    if (!targetLayer->isFilter()) return;
+
+    FilterLayer* fl = static_cast<FilterLayer*>(targetLayer);
+
+    if (active) {
+        // Если уже была активна другая маска, отключаем её
+        if (m_mask_edit_layer_id != -1 && m_mask_edit_layer_id != id) {
+            setMaskEditingMode(m_mask_edit_layer_id, false);
+        }
+
+        m_mask_edit_layer_id = id;
+        m_pre_mask_visibility.clear();
+
+        // Запоминаем видимость и прячем все слои, кроме текущего
+        for (size_t i = 0; i < m_layers.size(); ++i) {
+            m_pre_mask_visibility.push_back(m_layers[i]->isVisible());
+            if ((int)i != id) m_layers[i]->setVisible(false);
+        }
+
+        // Включаем визуальный режим маски
+        fl->setVisible(true);
+        fl->setMaskVisualMode(true);
+
+        // Автоматически выделяем этот слой
+        if (m_selected_index != id) selectLayer(id);
+
+    } else {
+        if (m_mask_edit_layer_id == id) {
+            fl->setMaskVisualMode(false);
+            m_mask_edit_layer_id = -1;
+
+            // Восстанавливаем видимость
+            for (size_t i = 0; i < m_layers.size() && i < m_pre_mask_visibility.size(); ++i) {
+                m_layers[i]->setVisible(m_pre_mask_visibility[i]);
+            }
+            m_pre_mask_visibility.clear();
+
+            // Пересчитываем фильтр с новой маской
+            fl->applyFilter();
+        }
+    }
+    emit maskEditingChanged(id, active);
 }

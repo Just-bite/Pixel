@@ -55,19 +55,17 @@ void LayerWidget::setName(const QString& name) {
 
 void LayerWidget::setIsFilter(bool isF) {
     if (isF) {
-        m_lock_btn->setText("⚙");
+        m_lock_btn->setText("M");
         m_lock_btn->setStyleSheet("font-weight: bold; color: #4a6b8f;");
-        m_lock_btn->setCheckable(false); // Для фильтра это кнопка настроек
+        m_lock_btn->setCheckable(true);
 
-        // ИСПРАВЛЕНИЕ: Отвязываем старый тумблер и привязываем клик по ⚙ к выбору слоя
         m_lock_btn->disconnect();
-        connect(m_lock_btn, &QPushButton::clicked, this, &LayerWidget::layerClicked);
+        connect(m_lock_btn, &QPushButton::toggled, this, &LayerWidget::onMaskToggled);
     } else {
         m_lock_btn->setText("L");
         m_lock_btn->setStyleSheet("");
         m_lock_btn->setCheckable(true);
 
-        // Возвращаем стандартное поведение замка для обычного слоя
         m_lock_btn->disconnect();
         connect(m_lock_btn, &QPushButton::toggled, this, &LayerWidget::onLockedToggled);
     }
@@ -85,8 +83,15 @@ void LayerWidget::setSelected(bool selected) {
 }
 void LayerWidget::setVisibleState(bool visible) { m_eye_btn->blockSignals(true); m_eye_btn->setChecked(!visible); m_eye_btn->blockSignals(false); }
 void LayerWidget::setLockedState(bool locked) { m_lock_btn->blockSignals(true); m_lock_btn->setChecked(locked); m_lock_btn->blockSignals(false); }
+void LayerWidget::setMaskState(bool active) {
+    m_lock_btn->blockSignals(true);
+    m_lock_btn->setChecked(active);
+    m_lock_btn->blockSignals(false);
+}
+
 void LayerWidget::onVisibleToggled(bool checked) { emit visibleToggled(!checked); } 
 void LayerWidget::onLockedToggled(bool checked) { emit lockedToggled(checked); }
+void LayerWidget::onMaskToggled(bool checked) { emit maskToggled(checked); }
 void LayerWidget::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) emit layerClicked();
     QWidget::mousePressEvent(event);
@@ -138,6 +143,11 @@ LayersPannel::LayersPannel(QWidget *parent, Canvas* canvas) : QWidget(parent), m
 
     connect(m_new_layer_btn, &QPushButton::clicked, this, &LayersPannel::onNewLayerClicked);
     connect(m_new_filter_btn, &QPushButton::clicked, this, &LayersPannel::onNewFilterClicked);
+    connect(m_canvas_ptr, &Canvas::maskEditingChanged, this, [this](int id, bool active){
+        for (LayerWidget* lw : m_layers) {
+            if (lw->getIndex() == id) lw->setMaskState(active);
+        }
+    });
     updateLayers();
 }
 
@@ -156,7 +166,12 @@ void LayersPannel::updateLayers() {
         lw->setIndex(index);
         lw->setIsFilter(i->isFilter);
         lw->setVisibleState(i->visible);
-        lw->setLockedState(i->locked);
+
+        if (i->isFilter) {
+            lw->setMaskState(m_canvas_ptr->getMaskEditLayerId() == index);
+        } else {
+            lw->setLockedState(i->locked);
+        }
 
         if (index == selectedIdx) lw->setSelected(true);
 
@@ -166,6 +181,9 @@ void LayersPannel::updateLayers() {
         connect(lw, &LayerWidget::layerClicked, this, &LayersPannel::onLayerClicked);
         connect(lw, &LayerWidget::visibleToggled, this, &LayersPannel::onLayerVisibleToggled);
         connect(lw, &LayerWidget::lockedToggled, this, &LayersPannel::onLayerLockedToggled);
+        connect(lw, &LayerWidget::maskToggled, this, [this, index](bool active){
+            m_canvas_ptr->setMaskEditingMode(index, active);
+        });
         connect(lw, &LayerWidget::nameChanged, this, &LayersPannel::onLayerNameChanged);
 
         m_layers.push_back(lw);

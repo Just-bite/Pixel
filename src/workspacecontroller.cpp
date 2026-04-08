@@ -398,21 +398,30 @@ RasterizeResult WorkspaceController::prepareRasterLayer() {
     if (activeId < 0) return RasterizeResult::Cancelled;
 
     Layer* layer = canvas->getLayers()[activeId];
-    if (layer->isFilter()) return RasterizeResult::Cancelled;
+
+    // ИСПРАВЛЕНИЕ: Разрешаем рисовать на фильтре, если мы редактируем его маску
+    if (layer->isFilter()) {
+        if (canvas->getMaskEditLayerId() == activeId) {
+            // Если маска пустая, инициализируем её белым (100% фильтра)
+            if (layer->getRasterImage().isNull() || layer->getRasterImage().width() == 0) {
+                QImage mask(canvas->getSize(), QImage::Format_ARGB32_Premultiplied);
+                mask.fill(Qt::white);
+                layer->setRasterImage(mask);
+            }
+            return RasterizeResult::Ready;
+        }
+        return RasterizeResult::Cancelled;
+    }
 
     bool hasVectors = !layer->getObjects().empty();
 
-    // Сценарий 1: Уже растр и нет векторов поверх -> Рисуем
     if (layer->isRasterized() && !hasVectors) return RasterizeResult::Ready;
 
-    // Сценарий 2: Слой абсолютно пустой (новый) -> Молча растрируем и Рисуем
     if (!layer->isRasterized() && !hasVectors) {
         m_undo_stack->push(new RasterizeLayerCommand(canvas, activeId));
-        // ИСПРАВЛЕНИЕ: Возвращаем RasterizedNow, чтобы заблокировать первый мазок!
         return RasterizeResult::RasterizedNow;
     }
 
-    // Сценарий 3: На слое есть векторы. Спрашиваем.
     Project* proj = m_context.projectManager->getCurrentProject();
     if (proj->getAskRasterize()) {
         QDialog dlg;
@@ -433,6 +442,5 @@ RasterizeResult WorkspaceController::prepareRasterLayer() {
     m_undo_stack->push(new RasterizeLayerCommand(canvas, activeId));
     m_context.scene->clearSelection();
 
-    // Возвращаем RasterizedNow, чтобы заблокировать первый мазок и избежать скачка!
     return RasterizeResult::RasterizedNow;
 }

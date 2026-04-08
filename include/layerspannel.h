@@ -25,6 +25,7 @@ public:
 
     void setVisibleState(bool visible);
     void setLockedState(bool locked);
+    void setMaskState(bool active);
 
 signals:
     void deleteClicked();
@@ -33,6 +34,7 @@ signals:
     void layerClicked();
     void visibleToggled(bool visible);
     void lockedToggled(bool locked);
+    void maskToggled(bool active);
     void nameChanged(const QString& newName);
 
 protected:
@@ -43,6 +45,7 @@ protected:
 private slots:
     void onVisibleToggled(bool checked);
     void onLockedToggled(bool checked);
+    void onMaskToggled(bool checked);
 
 private:
     static constexpr int BTN_SIZE = 30;
