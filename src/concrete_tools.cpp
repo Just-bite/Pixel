@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QPainterPath>
 #include <qmath.h>
+#include <QApplication>
 
 #include "include/action.h"
 #include "include/raster_action.h"
@@ -386,7 +387,6 @@ void PencilTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::CrossCursor);
     ctx.contextPannel->setActiveTool(InstrumentType::PENCIL);
     ctx.contextPannel->setRasterSettings(m_radius, m_density, m_hardness);
-    ctx.palettePannel->setColor(m_color);
 }
 
 void PencilTool::onRasterSettingsChanged(const WorkspaceContext& ctx) {
@@ -395,21 +395,23 @@ void PencilTool::onRasterSettingsChanged(const WorkspaceContext& ctx) {
     m_hardness = ctx.contextPannel->getRasterHardness();
 }
 
-void PencilTool::onColorChanged(const QColor& color, const WorkspaceContext& ctx) {
-    m_color = color;
-}
-
-void PencilTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density, const QColor& color) {
+void PencilTool::drawStroke(QPainter& p, const QPoint& p1, const QPoint& p2, int radius, int density, const QColor& color) {
     bool noAntiAliasing = (m_hardness >= 100);
     p.setRenderHint(QPainter::Antialiasing, !noAntiAliasing);
 
     if (density >= 100) {
-        Qt::PenCapStyle cap = (noAntiAliasing && radius == 1) ? Qt::SquareCap : Qt::RoundCap;
-        p.setPen(QPen(color, radius, Qt::SolidLine, cap, Qt::RoundJoin));
         if (p1 == p2) {
-            if (radius <= 1) p.drawPoint(p1);
-            else p.drawLine(p1, p1 + QPointF(0.01, 0)); // Hack for exact point render with RoundCap
+            p.setPen(Qt::NoPen);
+            p.setBrush(color);
+            if (noAntiAliasing && radius <= 1) {
+                p.drawRect(p1.x(), p1.y(), 1, 1);
+            } else {
+                p.drawEllipse(QPointF(p1), (qreal)radius, (qreal)radius);
+            }
         } else {
+            Qt::PenCapStyle cap = (noAntiAliasing && radius <= 1) ? Qt::SquareCap : Qt::RoundCap;
+            p.setPen(QPen(color, radius * 2, Qt::SolidLine, cap, Qt::RoundJoin));
+            p.setBrush(Qt::NoBrush);
             p.drawLine(p1, p2);
         }
     } else {
@@ -419,7 +421,7 @@ void PencilTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, i
 
         for (int i = 0; i <= steps; ++i) {
             qreal t = (qreal)i / steps;
-            QPointF pt = p1 + (p2 - p1) * t;
+            QPointF pt = QPointF(p1) + (QPointF(p2) - QPointF(p1)) * t;
 
             int dotsToDraw = (radius * density) / 50;
             if (dotsToDraw < 1) dotsToDraw = 1;
@@ -442,8 +444,10 @@ bool PencilTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx
     RasterizeResult res = ctx.controller->prepareRasterLayer();
     if (res == RasterizeResult::Cancelled || res == RasterizeResult::RasterizedNow) return false;
 
-    m_active_layer = ctx.projectManager->GetCurrentCanvas()->getLayers()[ctx.projectManager->GetCurrentCanvas()->getSelectedLayerid()];
+    // Динамически забираем цвет из UI!
+    m_current_stroke_color = ctx.contextPannel->getActiveColor();
 
+    m_active_layer = ctx.projectManager->GetCurrentCanvas()->getLayers()[ctx.projectManager->GetCurrentCanvas()->getSelectedLayerid()];
     m_image_before_stroke = *m_active_layer->getRasterImagePtr();
 
     m_is_drawing = true;
@@ -453,7 +457,7 @@ bool PencilTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx
     m_dirty_rect = QRect(m_last_pos.x() - m_radius - 2, m_last_pos.y() - m_radius - 2, m_radius * 2 + 4, m_radius * 2 + 4);
 
     QPainter p(m_active_layer->getRasterImagePtr());
-    drawStroke(p, m_last_pos, m_last_pos, m_radius, m_density, m_color);
+    drawStroke(p, m_last_pos, m_last_pos, m_radius, m_density, m_current_stroke_color);
 
     m_active_layer->updateRasterArea(m_dirty_rect);
     return true;
@@ -469,7 +473,7 @@ bool PencilTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx)
         QPoint current_pos = QPoint(qFloor(scenePos.x()), qFloor(scenePos.y()));
 
         QPainter p(m_active_layer->getRasterImagePtr());
-        drawStroke(p, m_last_pos, current_pos, m_radius, m_density, m_color);
+        drawStroke(p, m_last_pos, current_pos, m_radius, m_density, m_current_stroke_color);
 
         QRect updateRect(current_pos.x() - m_radius - 2, current_pos.y() - m_radius - 2, m_radius * 2 + 4, m_radius * 2 + 4);
         m_dirty_rect = m_dirty_rect.united(updateRect);
@@ -515,19 +519,25 @@ void EraserTool::onRasterSettingsChanged(const WorkspaceContext& ctx) {
     m_hardness = ctx.contextPannel->getRasterHardness();
 }
 
-void EraserTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, int radius, int density) {
+void EraserTool::drawStroke(QPainter& p, const QPoint& p1, const QPoint& p2, int radius, int density) {
     p.setCompositionMode(QPainter::CompositionMode_Clear);
 
     bool noAntiAliasing = (m_hardness >= 100);
     p.setRenderHint(QPainter::Antialiasing, !noAntiAliasing);
 
     if (density >= 100) {
-        Qt::PenCapStyle cap = (noAntiAliasing && radius == 1) ? Qt::SquareCap : Qt::RoundCap;
-        p.setPen(QPen(Qt::transparent, radius, Qt::SolidLine, cap, Qt::RoundJoin));
         if (p1 == p2) {
-            if (radius <= 1) p.drawPoint(p1);
-            else p.drawLine(p1, p1 + QPointF(0.01, 0));
+            p.setPen(Qt::NoPen);
+            p.setBrush(Qt::transparent);
+            if (noAntiAliasing && radius <= 1) {
+                p.drawRect(p1.x(), p1.y(), 1, 1);
+            } else {
+                p.drawEllipse(QPointF(p1), (qreal)radius, (qreal)radius);
+            }
         } else {
+            Qt::PenCapStyle cap = (noAntiAliasing && radius <= 1) ? Qt::SquareCap : Qt::RoundCap;
+            p.setPen(QPen(Qt::transparent, radius * 2, Qt::SolidLine, cap, Qt::RoundJoin));
+            p.setBrush(Qt::NoBrush);
             p.drawLine(p1, p2);
         }
     } else {
@@ -536,7 +546,7 @@ void EraserTool::drawStroke(QPainter& p, const QPointF& p1, const QPointF& p2, i
         int steps = qMax(1.0, QLineF(p1, p2).length());
         for (int i = 0; i <= steps; ++i) {
             qreal t = (qreal)i / steps;
-            QPointF pt = p1 + (p2 - p1) * t;
+            QPointF pt = QPointF(p1) + (QPointF(p2) - QPointF(p1)) * t;
             int dotsToDraw = (radius * density) / 50;
             if (dotsToDraw < 1) dotsToDraw = 1;
             for (int d = 0; d < dotsToDraw; ++d) {
@@ -610,11 +620,6 @@ bool EraserTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& c
 void FillTool::onActivate(const WorkspaceContext& ctx) {
     ctx.view->setCursor(Qt::CrossCursor);
     ctx.contextPannel->setActiveTool(InstrumentType::FILL);
-    ctx.palettePannel->setColor(m_color);
-}
-
-void FillTool::onColorChanged(const QColor& color, const WorkspaceContext& ctx) {
-    m_color = color;
 }
 
 bool FillTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
@@ -645,7 +650,10 @@ bool FillTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) 
 
     QRgb targetRgba = data[startPos.y() * pixelsPerLine + startPos.x()];
     QColor targetColor = QColor::fromRgba(targetRgba);
-    QRgb fillRgba = m_color.rgba();
+
+    // Динамически берем цвет для заливки!
+    QColor current_fill_color = ctx.contextPannel->getActiveColor();
+    QRgb fillRgba = current_fill_color.rgba();
 
     int tolerance = ctx.contextPannel->getFillTolerance();
 
@@ -711,4 +719,76 @@ bool FillTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) 
     activeLayer->updateRasterArea(dirtyRect);
 
     return true;
+}
+
+
+// ==================== PIPETTE TOOL ====================
+void PipetteTool::onActivate(const WorkspaceContext& ctx) {
+    ctx.view->setCursor(Qt::CrossCursor);
+}
+
+void PipetteTool::pickColor(const QPoint& mousePos, const WorkspaceContext& ctx, bool commit) {
+    QPointF scenePos = ctx.view->mapToScene(mousePos);
+
+    std::vector<QGraphicsItem*> hidden_ui;
+    for (QGraphicsItem* item : ctx.scene->items()) {
+        if (dynamic_cast<TransformBox*>(item) && item->isVisible()) {
+            item->setVisible(false);
+            hidden_ui.push_back(item);
+        }
+    }
+
+    QImage pixel(1, 1, QImage::Format_ARGB32_Premultiplied);
+    pixel.fill(Qt::transparent);
+    QPainter p(&pixel);
+    ctx.scene->render(&p, QRectF(0, 0, 1, 1), QRectF(qFloor(scenePos.x()), qFloor(scenePos.y()), 1, 1));
+    p.end();
+
+    for (QGraphicsItem* item : hidden_ui) {
+        item->setVisible(true);
+    }
+
+    QColor color = pixel.pixelColor(0, 0);
+
+    if (color.alpha() == 0) {
+        color = Qt::white;
+    }
+
+    if (commit) {
+        ctx.controller->onColorPickedCommit(color);
+    } else {
+        ctx.palettePannel->setColor(color);
+        ctx.controller->onColorPickedPreview(color);
+    }
+}
+
+bool PipetteTool::mousePressEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
+    if (event->button() == Qt::LeftButton) {
+        m_is_picking = true;
+        pickColor(event->pos(), ctx, false);
+        return true;
+    }
+    return false;
+}
+
+bool PipetteTool::mouseMoveEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
+    if (m_is_picking) {
+        pickColor(event->pos(), ctx, false);
+        return true;
+    }
+    return false;
+}
+
+bool PipetteTool::mouseReleaseEvent(QMouseEvent* event, const WorkspaceContext& ctx) {
+    if (m_is_picking && event->button() == Qt::LeftButton) {
+        m_is_picking = false;
+        pickColor(event->pos(), ctx, true);
+
+        if (!(QApplication::keyboardModifiers() & Qt::AltModifier)) {
+            ctx.controller->revertToPreviousTool();
+        }
+
+        return true;
+    }
+    return false;
 }

@@ -90,6 +90,7 @@ MainWindow::MainWindow(QWidget *parent)
     ctx.contextPannel = m_context_pannel_layout;
     ctx.palettePannel = palette_widget;
     ctx.layersPannel = m_layers_pannel;
+    ctx.instrumentPannel = m_instrument_pannel_layout; // <-- ПЕРЕДАЕМ ПАНЕЛЬ
 
     m_workspace_controller = new WorkspaceController(ctx, this);
 

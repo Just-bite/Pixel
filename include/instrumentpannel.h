@@ -18,6 +18,7 @@ enum class InstrumentType
     HAND,
     TEXT,
     FIGURE,
+    PIPETTE // <-- ПЕРЕИМЕНОВАНО
 };
 
 class InstrumentPannel : public QWidget

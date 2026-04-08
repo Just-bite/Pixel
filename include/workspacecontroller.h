@@ -11,9 +11,9 @@
 #include "concrete_tools.h"
 
 enum class RasterizeResult {
-        Ready,
-        RasterizedNow,
-        Cancelled
+    Ready,
+    RasterizedNow,
+    Cancelled
 };
 
 class WorkspaceController : public QObject {
@@ -25,6 +25,7 @@ public:
 
 public slots:
     void setCurrentTool(InstrumentType type);
+    void revertToPreviousTool(); // <-- ДОБАВЛЕНО
     void onSelectionChanged();
     void onContextPropertyChanged();
     void onColorTargetChanged(bool isFill);

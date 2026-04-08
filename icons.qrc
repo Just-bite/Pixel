@@ -10,5 +10,7 @@
         <file>resources/scissors.svg</file>
         <file>resources/figure.svg</file>
         <file>resources/palette.svg</file>
+        <file>resources/pipette.svg</file>
+        <file>resources/rubber.svg</file>
     </qresource>
 </RCC>
