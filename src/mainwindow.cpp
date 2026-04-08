@@ -5,12 +5,12 @@
 #include <QStatusBar>
 #include <QFileInfo>
 
-    MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-, ui(new Ui::MainWindow)
-, m_scene_main(new QGraphicsScene(this))
-, m_view_main(new QGraphicsView(this))
-, m_project_manager(new ProjectManager())
+    , ui(new Ui::MainWindow)
+    , m_scene_main(new QGraphicsScene(this))
+    , m_view_main(new QGraphicsView(this))
+    , m_project_manager(new ProjectManager())
 {
     ui->setupUi(this);
 
@@ -117,7 +117,6 @@
 
     connect(m_project_manager, &ProjectManager::layersUpdated, m_layers_pannel, &LayersPannel::updateLayers);
 
-    // ИСПРАВЛЕНИЕ: Используем лямбды для передачи сообщения в StatusBar
     connect(m_project_manager, &ProjectManager::statusMessage, this, [this](const QString& msg){
         statusBar()->showMessage(msg, 5000); // 5 секунд
     });

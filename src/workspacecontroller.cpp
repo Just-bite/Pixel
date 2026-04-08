@@ -1,11 +1,3 @@
-#include "include/workspacecontroller.h"
-#include "include/action.h"
-#include "include/raster_action.h"
-#include "include/projectmanager.h"
-#include "include/contextpannel.h"
-#include "include/palettepannel.h"
-#include "include/layerspannel.h"
-
 #include <QApplication>
 #include <QClipboard>
 #include <QMimeData>
@@ -17,6 +9,13 @@
 #include <QCheckBox>
 #include <QDialogButtonBox>
 
+#include "include/workspacecontroller.h"
+#include "include/action.h"
+#include "include/raster_action.h"
+#include "include/projectmanager.h"
+#include "include/contextpannel.h"
+#include "include/palettepannel.h"
+#include "include/layerspannel.h"
 
 WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* parent)
     : QObject(parent), m_context(ctx)
@@ -75,7 +74,6 @@ void WorkspaceController::setCurrentTool(InstrumentType type) {
         m_active_tool = m_tools[InstrumentType::POINTER].get();
     }
 
-    // Сообщение для Status Bar
     QString toolName;
     switch(type) {
     case InstrumentType::POINTER: toolName = "Pointer"; break;
@@ -92,7 +90,6 @@ void WorkspaceController::setCurrentTool(InstrumentType type) {
     if (m_active_tool) m_active_tool->onActivate(m_context);
 }
 
-
 void WorkspaceController::updateTransformBoxScale() {
     if (m_active_tool) m_active_tool->onViewScaleChanged(m_context);
 }
@@ -100,7 +97,6 @@ void WorkspaceController::updateTransformBoxScale() {
 bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
     if (!m_context.view || !m_context.projectManager) return QObject::eventFilter(obj, event);
 
-    // Временное переключение на руку по пробелу (очень элегантный паттерн)
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent *kEvent = static_cast<QKeyEvent *>(event);
         if (kEvent->key() == Qt::Key_Space && !kEvent->isAutoRepeat()) {
@@ -116,7 +112,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
         }
     }
 
-    // Роутинг событий мыши
     if (obj == m_context.view->viewport() || obj == m_context.view) {
         if (event->type() == QEvent::Wheel) {
             QWheelEvent *wEvent = static_cast<QWheelEvent *>(event);
@@ -142,7 +137,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
         }
     }
 
-    // Глобальные шорткаты
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent *kEvent = static_cast<QKeyEvent *>(event);
         if (kEvent->modifiers() & Qt::ControlModifier) {
@@ -157,7 +151,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
         if (m_active_tool && m_active_tool->keyPressEvent(kEvent, m_context)) return true;
     }
 
-    // Drag & Drop
     if (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove) {
         QDragMoveEvent *dEvent = static_cast<QDragMoveEvent*>(event);
         if (dEvent->mimeData()->hasImage() || dEvent->mimeData()->hasUrls()) {
@@ -198,12 +191,10 @@ void WorkspaceController::handlePaste() {
     int activeId = canvas->getSelectedLayerid();
     if (activeId < 0 || canvas->getLayersInfo()[activeId].locked || canvas->getLayersInfo()[activeId].isFilter) return;
 
-    // Вставка из ОС
     const QClipboard *clipboard = QApplication::clipboard();
     const QMimeData *mimeData = clipboard->mimeData();
     QImage img;
 
-    // ВОЗВРАЩАЕМ ПОТЕРЯННУЮ ПРОВЕРКУ НА ФАЙЛЫ ИЗ ПРОВОДНИКА
     if (mimeData->hasImage()) {
         img = qvariant_cast<QImage>(mimeData->imageData());
     } else if (mimeData->hasUrls()) {
@@ -228,7 +219,6 @@ void WorkspaceController::handlePaste() {
         return;
     }
 
-    // Вставка из внутреннего буфера
     if (m_clipboard_type != ClipboardType::None) {
         m_context.scene->clearSelection();
         QPointF centerPos = m_context.view->mapToScene(m_context.view->viewport()->rect().center());
@@ -291,8 +281,6 @@ void WorkspaceController::onActiveLayerChanged(int id) {
     if (id >= 0 && canvas->getLayers()[id]->isFilter()) {
         m_context.scene->clearSelection();
         m_context.contextPannel->setTarget(static_cast<FilterLayer*>(canvas->getLayers()[id]));
-        // ИСПРАВЛЕНИЕ: Добавили 6й параметр для setMode
-        m_context.contextPannel->setMode(false, false, false, false, false, false, "Filter Properties");
     } else {
         setCurrentTool(m_current_tool_type);
         onSelectionChanged();
@@ -321,7 +309,7 @@ void WorkspaceController::onContextPropertyChanged() {
         FigureState newState = m_context.contextPannel->getUIState(oldState);
         if (oldState != newState) {
             m_undo_stack->push(new ModifyFigureCommand(fig, oldState, newState));
-            m_context.contextPannel->setTarget(fig); // Обновляем инпуты, чтобы убрать артефакты ввода
+            m_context.contextPannel->setTarget(fig);
         }
     } else if (TextObject* txt = dynamic_cast<TextObject*>(obj)) {
         TextState oldState = txt->getState();
@@ -342,7 +330,10 @@ void WorkspaceController::onContextPropertyChanged() {
     if (m_active_tool) m_active_tool->onObjectModified(m_context);
 }
 
-void WorkspaceController::onColorTargetChanged(bool isFill) { m_color_target_is_fill = isFill; m_context.palettePannel->setColor(m_context.contextPannel->getActiveColor()); }
+void WorkspaceController::onColorTargetChanged(bool isFill) {
+    m_color_target_is_fill = isFill;
+    m_context.palettePannel->setColor(m_context.contextPannel->getActiveColor());
+}
 
 void WorkspaceController::onColorPickedPreview(const QColor& color) {
     QList<QGraphicsItem*> selected = m_context.scene->selectedItems();
@@ -414,10 +405,8 @@ RasterizeResult WorkspaceController::prepareRasterLayer() {
 
     Layer* layer = canvas->getLayers()[activeId];
 
-    // ИСПРАВЛЕНИЕ: Разрешаем рисовать на фильтре, если мы редактируем его маску
     if (layer->isFilter()) {
         if (canvas->getMaskEditLayerId() == activeId) {
-            // Если маска пустая, инициализируем её белым (100% фильтра)
             if (layer->getRasterImage().isNull() || layer->getRasterImage().width() == 0) {
                 QImage mask(canvas->getSize(), QImage::Format_ARGB32_Premultiplied);
                 mask.fill(Qt::white);

@@ -38,7 +38,7 @@ bool ProjectManager::promptSaveIfModified() {
     } else if (res == QMessageBox::Cancel) {
         return false;
     }
-    return true; // Discard (продолжаем без сохранения)
+    return true;
 }
 
 bool ProjectManager::openFile() {

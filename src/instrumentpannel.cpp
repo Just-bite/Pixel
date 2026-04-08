@@ -60,7 +60,6 @@ void InstrumentPannel::setButtonsIcons()
     {
         InstrumentType type = static_cast<InstrumentType>(i);
 
-        // ИСПРАВЛЕНИЕ: Скрываем ножницы
         if (type == InstrumentType::SCISSORS) {
             m_bttns_instruments[i]->hide();
             continue;
@@ -70,7 +69,6 @@ void InstrumentPannel::setButtonsIcons()
             m_bttns_instruments[i]->setIcon(m_instrument_icon[type].first);
             m_bttns_instruments[i]->setToolTip(m_instrument_icon[type].second);
 
-            // ИСПРАВЛЕНИЕ: Разрешаем инструмент FILL
             if (type != InstrumentType::POINTER && type != InstrumentType::HAND &&
                 type != InstrumentType::FIGURE && type != InstrumentType::TEXT &&
                 type != InstrumentType::PENCIL && type != InstrumentType::ERASER &&

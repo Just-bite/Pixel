@@ -44,12 +44,10 @@ void FilterLayer::applyFilter() {
 
     QImage mask = getRasterImage();
 
-    // Если маски нет, применяем фильтр на 100%
     if (mask.isNull()) {
         m_rendered_image = filtered;
     } else {
-        // СМЕШИВАНИЕ (Блендинг) оригинальной и отфильтрованной картинки по маске
-        m_rendered_image = m_cached_image.copy(); // Основа - оригинал
+        m_rendered_image = m_cached_image.copy();
         int w = m_rendered_image.width();
         int h = m_rendered_image.height();
         int mw = mask.width();
@@ -95,7 +93,6 @@ QRectF FilterLayer::boundingRect() const {
 
 void FilterLayer::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) {
     if (m_mask_visual_mode) {
-        // В режиме редактирования маски рисуем саму маску
         QImage mask = getRasterImage();
         if (!mask.isNull()) {
             painter->drawImage(0, 0, mask);
@@ -103,7 +100,6 @@ void FilterLayer::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWi
             painter->fillRect(0, 0, m_cached_image.width(), m_cached_image.height(), Qt::white);
         }
     } else {
-        // В обычном режиме рисуем результат фильтрации
         if (!m_rendered_image.isNull() && isVisible()) {
             painter->drawImage(0, 0, m_rendered_image);
         }

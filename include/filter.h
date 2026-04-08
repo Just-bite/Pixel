@@ -7,7 +7,7 @@
 #include <memory>
 #include <cmath>
 
-    enum class FilterType { None, Grayscale, Invert, BrightnessContrast, Blur, Threshold, Sharpen, HSL };
+enum class FilterType { None, Grayscale, Invert, BrightnessContrast, Blur, Threshold, Sharpen, HSL };
 
 struct FilterParamInfo {
     QString name;

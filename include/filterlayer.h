@@ -5,7 +5,7 @@
 #include "filter.h"
 #include <QImage>
 
-    class FilterLayer : public Layer {
+class FilterLayer : public Layer {
     Q_OBJECT
 public:
     explicit FilterLayer(const QString& name, QGraphicsItem* parent = nullptr);
@@ -16,9 +16,8 @@ public:
     void setFilterState(const FilterState& state);
 
     void setCachedImage(const QImage& img);
-    void applyFilter(); // Теперь публичный метод
+    void applyFilter();
 
-    // Управление режимом маски
     void setMaskVisualMode(bool active);
     bool isMaskVisualMode() const { return m_mask_visual_mode; }
 

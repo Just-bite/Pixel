@@ -37,7 +37,7 @@ public slots:
 
 signals:
     void viewportChanged();
-    void statusMessage(const QString& msg); // НОВЫЙ СИГНАЛ
+    void statusMessage(const QString& msg);
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
