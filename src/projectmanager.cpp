@@ -20,6 +20,7 @@ void ProjectManager::createProject() {
     m_projects.push_back(project);
     if (m_projects.size() == 1) m_selected_project = project;
     m_current_file_path = "";
+    m_is_modified = false;
 }
 
 Canvas* ProjectManager::GetCurrentCanvas() {
@@ -27,7 +28,22 @@ Canvas* ProjectManager::GetCurrentCanvas() {
     return m_selected_project->GetCanvas();
 }
 
+bool ProjectManager::promptSaveIfModified() {
+    if (!m_is_modified) return true;
+    QMessageBox::StandardButton res = QMessageBox::warning(this, "Unsaved Changes",
+                                                           "The project has been modified.\nDo you want to save your changes?",
+                                                           QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+    if (res == QMessageBox::Save) {
+        return saveFile();
+    } else if (res == QMessageBox::Cancel) {
+        return false;
+    }
+    return true; // Discard (продолжаем без сохранения)
+}
+
 bool ProjectManager::openFile() {
+    if (!promptSaveIfModified()) return false;
+
     QString fileName = QFileDialog::getOpenFileName(this, "Open Pixel Project", "", "Pixel Files (*.pxl)");
     if (fileName.isEmpty()) return false;
     loadFromJson(fileName);
@@ -64,7 +80,9 @@ bool ProjectManager::exportPng() {
 
     canvas->getScene()->render(&painter, QRectF(), QRectF(0, 0, canvas->getSize().width(), canvas->getSize().height()));
 
-    return image.save(fileName);
+    bool ok = image.save(fileName);
+    if (ok) emit statusMessage(QString("Exported to PNG: %1").arg(fileName));
+    return ok;
 }
 
 void ProjectManager::saveToJson(const QString& path) {
@@ -72,7 +90,7 @@ void ProjectManager::saveToJson(const QString& path) {
     if (!canvas) return;
 
     QJsonObject root;
-    root["version"] = 4; // Поднял версию, т.к. добавились маски
+    root["version"] = 4;
     if (m_selected_project) {
         root["ask_rasterize"] = m_selected_project->getAskRasterize();
     }
@@ -86,7 +104,6 @@ void ProjectManager::saveToJson(const QString& path) {
         lObj["isFilter"] = l->isFilter();
         lObj["isRasterized"] = l->isRasterized();
 
-        // ИСПРАВЛЕНИЕ: Сохраняем растровую картинку для растрового слоя ИЛИ для маски фильтра
         if (l->isRasterized() || (l->isFilter() && !l->getRasterImage().isNull())) {
             QByteArray byteArray;
             QBuffer buffer(&byteArray);
@@ -95,7 +112,6 @@ void ProjectManager::saveToJson(const QString& path) {
             lObj["raster_image"] = QString::fromLatin1(byteArray.toBase64());
         }
 
-        // Сохранение параметров фильтра
         if (l->isFilter()) {
             FilterLayer* fl = static_cast<FilterLayer*>(l);
             FilterState s = fl->getFilterState();
@@ -106,7 +122,6 @@ void ProjectManager::saveToJson(const QString& path) {
             lObj["f_params"] = paramsArr;
         }
 
-        // Сохранение векторных объектов
         QJsonArray objsArr;
         for (Object* o : l->getObjects()) {
             QJsonObject sObj;
@@ -154,6 +169,8 @@ void ProjectManager::saveToJson(const QString& path) {
     if (file.open(QIODevice::WriteOnly)) {
         file.write(QJsonDocument(root).toJson());
         m_current_file_path = path;
+        emit projectSaved();
+        emit statusMessage("Project saved successfully.");
     }
 }
 
@@ -208,7 +225,6 @@ void ProjectManager::loadFromJson(const QString& path) {
             l->setRasterized(true);
         }
 
-        // ИСПРАВЛЕНИЕ: Загружаем растр, если он есть (и для обычных слоев, и для масок фильтра)
         if (lObj.contains("raster_image")) {
             QByteArray byteArray = QByteArray::fromBase64(lObj["raster_image"].toString().toLatin1());
             QImage img;
@@ -268,9 +284,12 @@ void ProjectManager::loadFromJson(const QString& path) {
     canvas->updateFilters();
     emit projectLoaded();
     emit layersUpdated();
+    emit statusMessage("Project loaded successfully.");
 }
 
 bool ProjectManager::createFile() {
+    if (!promptSaveIfModified()) return false;
+
     QDialog dlg(this);
     dlg.setWindowTitle("New Project");
 
@@ -297,6 +316,7 @@ bool ProjectManager::createFile() {
             m_current_file_path = "";
             emit projectLoaded();
             emit layersUpdated();
+            emit statusMessage(QString("New Project created (%1x%2).").arg(wBox->value()).arg(hBox->value()));
         }
         return true;
     }
