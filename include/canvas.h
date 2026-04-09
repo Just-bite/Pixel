@@ -46,6 +46,9 @@ public:
     void updateFilters();
     void setFiltersInteractionActive(bool active);
 
+    int getMaskEditLayerId() const { return m_mask_edit_layer_id; }
+    void setMaskEditingMode(int id, bool active);
+
     QSize getSize() const { return m_canvas_size; }
     void renameLayer(int id, const QString& new_name);
     QGraphicsRectItem* getBgItem() const { return m_bg_item; }
@@ -59,8 +62,12 @@ private:
     QGraphicsRectItem* m_bg_item;
     int m_layer_counter;
 
+    int m_mask_edit_layer_id = -1;
+    std::vector<bool> m_pre_mask_visibility;
+
 signals:
     void activeLayerChanged(int id);
+    void maskEditingChanged(int id, bool active);
 };
 
 #endif // CANVAS_H

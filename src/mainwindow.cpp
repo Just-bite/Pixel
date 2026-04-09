@@ -2,6 +2,8 @@
 #include "ui_mainwindow.h"
 #include <QTimer>
 #include <QMessageBox>
+#include <QStatusBar>
+#include <QFileInfo>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -32,16 +34,6 @@ MainWindow::MainWindow(QWidget *parent)
     m_view_main->viewport()->setAcceptDrops(true);
 
     m_project_manager->createProject();
-
-    connect(m_project_manager, &ProjectManager::projectLoaded, this, [this](){
-        if(m_workspace_controller) m_workspace_controller->getUndoStack()->clear();
-    });
-
-    connect(m_project_manager, &ProjectManager::layersUpdated, this, [this](){
-        if(m_layers_pannel) {
-            m_layers_pannel->selectLayerFromOutside(0);
-        }
-    });
 
     Canvas *canvas = m_project_manager->GetCurrentCanvas();
     canvas->setScene(m_scene_main);
@@ -98,6 +90,7 @@ MainWindow::MainWindow(QWidget *parent)
     ctx.contextPannel = m_context_pannel_layout;
     ctx.palettePannel = palette_widget;
     ctx.layersPannel = m_layers_pannel;
+    ctx.instrumentPannel = m_instrument_pannel_layout; // <-- ПЕРЕДАЕМ ПАНЕЛЬ
 
     m_workspace_controller = new WorkspaceController(ctx, this);
 
@@ -106,18 +99,41 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(m_project_manager, &ProjectManager::projectAboutToClose, m_workspace_controller, &WorkspaceController::clearState);
 
+    connect(m_workspace_controller->getUndoStack(), &QUndoStack::cleanChanged, this, [this](bool clean) {
+        m_project_manager->setModified(!clean);
+        updateWindowTitle();
+    });
+
+    connect(m_project_manager, &ProjectManager::projectSaved, m_workspace_controller->getUndoStack(), &QUndoStack::setClean);
+
     connect(m_project_manager, &ProjectManager::projectLoaded, this, [this](){
+        if(m_workspace_controller) m_workspace_controller->getUndoStack()->clear();
+        if(m_instrument_pannel_layout) m_instrument_pannel_layout->setActiveTool(InstrumentType::POINTER);
         updateInfoPanel();
+        updateWindowTitle();
+    });
+
+    connect(m_project_manager, &ProjectManager::layersUpdated, this, [this](){
+        if(m_layers_pannel) m_layers_pannel->selectLayerFromOutside(0);
     });
 
     connect(m_project_manager, &ProjectManager::layersUpdated, m_layers_pannel, &LayersPannel::updateLayers);
 
+    connect(m_project_manager, &ProjectManager::statusMessage, this, [this](const QString& msg){
+        statusBar()->showMessage(msg, 5000); // 5 секунд
+    });
+    connect(m_workspace_controller, &WorkspaceController::statusMessage, this, [this](const QString& msg){
+        statusBar()->showMessage(msg, 5000);
+    });
+
     updateInfoPanel();
+    updateWindowTitle();
     createMenuBar();
     QTimer::singleShot(0, this, &MainWindow::onFitToScreen);
     m_workspace_controller->setCurrentTool(InstrumentType::POINTER);
-}
 
+    statusBar()->showMessage("Welcome to Pixel Vector Graphics Editor!", 5000);
+}
 
 void MainWindow::createMenuBar()
 {
@@ -180,6 +196,20 @@ void MainWindow::createMenuBar()
     });
 }
 
+void MainWindow::updateWindowTitle() {
+    QString name = m_project_manager->getCurrentFilePath().isEmpty() ? "Untitled" : QFileInfo(m_project_manager->getCurrentFilePath()).fileName();
+    QString star = m_workspace_controller->getUndoStack()->isClean() ? "" : "*";
+    setWindowTitle(QString("Pixel - %1%2").arg(name).arg(star));
+}
+
+void MainWindow::closeEvent(QCloseEvent *event) {
+    if (m_project_manager->promptSaveIfModified()) {
+        event->accept();
+    } else {
+        event->ignore();
+    }
+}
+
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
@@ -220,8 +250,8 @@ MainWindow::~MainWindow() {
     delete ui;
 }
 
-void MainWindow::onZoomIn() { m_view_main->scale(1.15, 1.15); updateInfoPanel(); }
-void MainWindow::onZoomOut() { m_view_main->scale(1.0 / 1.15, 1.0 / 1.15); updateInfoPanel(); }
+void MainWindow::onZoomIn() { onSetAbsoluteZoom(m_view_main->transform().m11() * 1.15); }
+void MainWindow::onZoomOut() { onSetAbsoluteZoom(m_view_main->transform().m11() / 1.15); }
 void MainWindow::onFitToScreen() {
     if (m_view_main->viewport()->width() < 10 || m_view_main->viewport()->height() < 10) return;
     Canvas *canvas = m_project_manager->GetCurrentCanvas();
@@ -233,7 +263,21 @@ void MainWindow::onFitToScreen() {
     updateInfoPanel();
 }
 void MainWindow::onSetAbsoluteZoom(float scale) {
+    Canvas* canvas = m_project_manager->GetCurrentCanvas();
+    double cw = canvas ? canvas->getSize().width() : 800;
+    double ch = canvas ? canvas->getSize().height() : 600;
+    double vw = m_view_main->viewport()->width();
+    double vh = m_view_main->viewport()->height();
+
+    double minScaleW = vw / (10.0 * qMax(1.0, cw));
+    double minScaleH = vh / (10.0 * qMax(1.0, ch));
+    double minScale = qMin(minScaleW, minScaleH);
+    if (minScale <= 0) minScale = 0.01;
+    double maxScale = 150.0;
+
+    double clampedScale = qBound(minScale, (double)scale, maxScale);
+
     m_view_main->resetTransform();
-    m_view_main->scale(scale, scale);
+    m_view_main->scale(clampedScale, clampedScale);
     updateInfoPanel();
 }

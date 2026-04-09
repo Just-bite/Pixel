@@ -1,5 +1,7 @@
 #include "include\contextpannel.h"
 
+#define RESOURCE_PATH_PREFIX ":/application_icon/resources/"
+
 ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     setMinimumHeight(65);
     setMaximumHeight(65);
@@ -53,46 +55,37 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_layer_group = new QWidget(this);
     QHBoxLayout* layer_layout = new QHBoxLayout(m_layer_group);
     layer_layout->setContentsMargins(5, 10, 5, 5);
-    m_btn_layer_down = new QPushButton("Dn", this);
-    m_btn_layer_down->setFixedSize(45, 26);
-    m_btn_layer_up = new QPushButton("Up", this);
-    m_btn_layer_up->setFixedSize(45, 26);
+    m_btn_layer_down = new QPushButton(this);
+    m_btn_layer_down->setIcon(QIcon(RESOURCE_PATH_PREFIX "down-arrow.svg"));
+    m_btn_layer_down->setToolTip("Move down a layer");
+    m_btn_layer_down->setFixedSize(30, 30);
+    m_btn_layer_up = new QPushButton(this);
+    m_btn_layer_up->setIcon(QIcon(RESOURCE_PATH_PREFIX "up-arrow.svg"));
+    m_btn_layer_up->setToolTip("Move up a layer");
+    m_btn_layer_up->setFixedSize(30, 30);
+
     layer_layout->addWidget(m_btn_layer_down);
     layer_layout->addWidget(m_btn_layer_up);
 
     m_raster_group = new QGroupBox("Brush", this);
     QHBoxLayout* raster_layout = new QHBoxLayout(m_raster_group);
     raster_layout->setContentsMargins(5, 5, 5, 5);
-
-    m_raster_radius = new QSpinBox(this);
-    m_raster_radius->setRange(1, 500);
-    m_raster_radius->setValue(10);
-
-    m_raster_density = new QSpinBox(this);
-    m_raster_density->setRange(1, 100);
-    m_raster_density->setValue(100);
-
-    m_raster_hardness = new QSpinBox(this);
-    m_raster_hardness->setRange(1, 100);
-    m_raster_hardness->setValue(100);
-
+    m_raster_radius = new QSpinBox(this); m_raster_radius->setRange(1, 500); m_raster_radius->setValue(10);
+    m_raster_density = new QSpinBox(this); m_raster_density->setRange(1, 100); m_raster_density->setValue(100);
+    m_raster_hardness = new QSpinBox(this); m_raster_hardness->setRange(1, 100); m_raster_hardness->setValue(100);
     addLabeledWidget(raster_layout, "Radius:", m_raster_radius);
     addLabeledWidget(raster_layout, "Density %:", m_raster_density);
     addLabeledWidget(raster_layout, "Hardness %:", m_raster_hardness);
 
-    // Добавляем группу заливки
     m_fill_group = new QGroupBox("Fill", this);
     QHBoxLayout* fill_layout = new QHBoxLayout(m_fill_group);
     fill_layout->setContentsMargins(5, 5, 5, 5);
-    m_fill_tolerance = new QSpinBox(this);
-    m_fill_tolerance->setRange(0, 255);
-    m_fill_tolerance->setValue(0);
+    m_fill_tolerance = new QSpinBox(this); m_fill_tolerance->setRange(0, 255); m_fill_tolerance->setValue(0);
     addLabeledWidget(fill_layout, "Tolerance:", m_fill_tolerance);
 
     m_filter_group = new QGroupBox("Filter", this);
     QHBoxLayout* filter_layout = new QHBoxLayout(m_filter_group);
     filter_layout->setContentsMargins(5, 5, 5, 5);
-
     m_filter_type_box = new QComboBox(this);
     m_filter_type_box->addItem("None", static_cast<int>(FilterType::None));
     m_filter_type_box->addItem("Grayscale", static_cast<int>(FilterType::Grayscale));
@@ -102,10 +95,8 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_filter_type_box->addItem("Threshold", static_cast<int>(FilterType::Threshold));
     m_filter_type_box->addItem("Sharpen", static_cast<int>(FilterType::Sharpen));
     m_filter_type_box->addItem("HSL Color", static_cast<int>(FilterType::HSL));
-
     filter_layout->addWidget(new QLabel("Type:", this));
     filter_layout->addWidget(m_filter_type_box);
-
     m_filter_params_container = new QWidget(this);
     m_filter_params_layout = new QHBoxLayout(m_filter_params_container);
     m_filter_params_layout->setContentsMargins(0, 0, 0, 0);
@@ -126,11 +117,7 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     m_default_state.thickness = 2.0f;
     m_default_state.type = FigureType::Ellipse;
 
-    m_default_state.pos = QPointF(0, 0);
-    m_default_state.rot = 0.0;
-    m_default_state.rect = QRectF(0, 0, 0, 0);
     m_default_text_state.color = Qt::black;
-
     m_default_text_state.font = QFont("Arial", 20);
 
     connect(m_btn_fill_color, &QPushButton::clicked, this, &ContextPannel::onColorFillClicked);
@@ -151,10 +138,9 @@ ContextPannel::ContextPannel(QWidget* parent) : QWidget(parent) {
     connect(m_raster_radius, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &ContextPannel::onAnyUIChanged);
     connect(m_raster_density, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &ContextPannel::onAnyUIChanged);
     connect(m_raster_hardness, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &ContextPannel::onAnyUIChanged);
-
     connect(m_filter_type_box, comboSignal, this, &ContextPannel::onFilterTypeChanged);
 
-    setMode(false, false, false, false, false, false, "Pointer");
+    setActiveTool(InstrumentType::POINTER);
 }
 
 void ContextPannel::addLabeledWidget(QHBoxLayout* layout, const QString& text, QWidget* widget) {
@@ -167,10 +153,30 @@ QDoubleSpinBox* ContextPannel::createSpinBox(double min, double max) {
     return sb;
 }
 
-void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool isTextTool, bool isRasterTool, bool isFillTool, const QString& toolName) {
+void ContextPannel::setActiveTool(InstrumentType tool) {
+    m_current_tool = tool;
+    updateUI();
+}
+
+void ContextPannel::clearTargets() {
+    m_current_target = nullptr;
+    m_current_text_target = nullptr;
+    m_current_image_target = nullptr;
+    m_current_filter_target = nullptr;
+    updateUI();
+}
+
+void ContextPannel::updateUI() {
     bool isFilterSel = (m_current_filter_target != nullptr);
     bool isImgSel = (m_current_image_target != nullptr);
+    bool isFigSel = (m_current_target != nullptr);
+    bool isTextSel = (m_current_text_target != nullptr);
     bool somethingSelected = isFigSel || isTextSel || isImgSel || isFilterSel;
+
+    bool isFigTool = (m_current_tool == InstrumentType::FIGURE);
+    bool isTextTool = (m_current_tool == InstrumentType::TEXT);
+    bool isRasterTool = (m_current_tool == InstrumentType::PENCIL || m_current_tool == InstrumentType::ERASER);
+    bool isFillTool = (m_current_tool == InstrumentType::FILL);
 
     m_filter_group->setVisible(isFilterSel);
     m_geometry_group->setVisible(somethingSelected && !isFilterSel);
@@ -178,7 +184,7 @@ void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool 
     m_text_group->setVisible((isTextSel || isTextTool) && !isFilterSel);
     m_raster_group->setVisible(isRasterTool);
     m_fill_group->setVisible(isFillTool);
-    m_layer_group->setVisible(somethingSelected);
+    m_layer_group->setVisible(somethingSelected & !isFilterSel);
 
     bool anyGroupVisible = m_filter_group->isVisible() || m_geometry_group->isVisible() ||
                            m_style_group->isVisible() || m_text_group->isVisible() ||
@@ -186,16 +192,22 @@ void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool 
 
     m_lbl_placeholder->setVisible(!anyGroupVisible);
 
-    if (!anyGroupVisible && !toolName.isEmpty()) {
+    if (!anyGroupVisible) {
+        QString toolName = "Pointer";
+        switch(m_current_tool) {
+        case InstrumentType::HAND: toolName = "Hand"; break;
+        case InstrumentType::FIGURE: toolName = "Figure"; break;
+        case InstrumentType::TEXT: toolName = "Text"; break;
+        case InstrumentType::PENCIL: toolName = "Pencil"; break;
+        case InstrumentType::ERASER: toolName = "Eraser"; break;
+        case InstrumentType::FILL: toolName = "Fill"; break;
+        case InstrumentType::POINTER: toolName = "Pointer"; break;
+        default: break;
+        }
         m_lbl_placeholder->setText(QString("Tool: %1. No specific settings.").arg(toolName));
     }
 
     if (!somethingSelected) {
-        m_current_target = nullptr;
-        m_current_text_target = nullptr;
-        m_current_image_target = nullptr;
-        m_current_filter_target = nullptr;
-
         blockSignals(true);
         if (isTextTool) {
             m_font_box->setCurrentFont(m_default_text_state.font);
@@ -206,65 +218,66 @@ void ContextPannel::setMode(bool isFigSel, bool isTextSel, bool isFigTool, bool 
     }
 }
 
-// ... остальная часть файла без изменений, не забудьте оставить реализацию остальных методов (setTarget, getUIState и т.д.)
-
 void ContextPannel::setTarget(Figure* figure) {
     m_current_target = figure; m_current_text_target = nullptr;
     m_current_image_target = nullptr; m_current_filter_target = nullptr;
-    if (!figure) return;
-    blockSignals(true);
-    FigureState s = figure->getState();
-    m_style_group->setVisible(true);
-    m_type_box->setCurrentIndex(m_type_box->findData(static_cast<int>(s.type)));
-    m_thick_box->setValue(s.thickness);
-    m_x_box->setValue(s.pos.x()); m_y_box->setValue(s.pos.y());
-    m_w_box->setValue(s.rect.width()); m_h_box->setValue(s.rect.height());
-    m_rot_box->setValue(s.rot);
-    updateColorButtonsUI();
-    blockSignals(false);
+    if (figure) {
+        blockSignals(true);
+        FigureState s = figure->getState();
+        m_type_box->setCurrentIndex(m_type_box->findData(static_cast<int>(s.type)));
+        m_thick_box->setValue(s.thickness);
+        m_x_box->setValue(s.pos.x()); m_y_box->setValue(s.pos.y());
+        m_w_box->setValue(s.rect.width()); m_h_box->setValue(s.rect.height());
+        m_rot_box->setValue(s.rot);
+        blockSignals(false);
+    }
+    updateUI();
 }
 
 void ContextPannel::setTarget(TextObject* textObj) {
     m_current_target = nullptr; m_current_text_target = textObj;
     m_current_image_target = nullptr; m_current_filter_target = nullptr;
-    if (!textObj) return;
-    blockSignals(true);
-    TextState s = textObj->getState();
-    m_font_box->setCurrentFont(s.font);
-    m_font_size_box->setValue(s.font.pointSizeF());
-    m_x_box->setValue(s.pos.x()); m_y_box->setValue(s.pos.y());
-    m_w_box->setValue(s.rect.width()); m_h_box->setValue(s.rect.height());
-    m_rot_box->setValue(s.rot);
-    updateColorButtonsUI();
-    blockSignals(false);
+    if (textObj) {
+        blockSignals(true);
+        TextState s = textObj->getState();
+        m_font_box->setCurrentFont(s.font);
+        m_font_size_box->setValue(s.font.pointSizeF());
+        m_x_box->setValue(s.pos.x()); m_y_box->setValue(s.pos.y());
+        m_w_box->setValue(s.rect.width()); m_h_box->setValue(s.rect.height());
+        m_rot_box->setValue(s.rot);
+        blockSignals(false);
+    }
+    updateUI();
 }
 
 void ContextPannel::setTarget(ImageObject* imageObj) {
     m_current_target = nullptr; m_current_text_target = nullptr;
     m_current_image_target = imageObj; m_current_filter_target = nullptr;
-    if (!imageObj) return;
-    blockSignals(true);
-    ImageState s = imageObj->getState();
-    m_x_box->setValue(s.pos.x()); m_y_box->setValue(s.pos.y());
-    m_w_box->setValue(s.rect.width()); m_h_box->setValue(s.rect.height());
-    m_rot_box->setValue(s.rot);
-    blockSignals(false);
+    if (imageObj) {
+        blockSignals(true);
+        ImageState s = imageObj->getState();
+        m_x_box->setValue(s.pos.x()); m_y_box->setValue(s.pos.y());
+        m_w_box->setValue(s.rect.width()); m_h_box->setValue(s.rect.height());
+        m_rot_box->setValue(s.rot);
+        blockSignals(false);
+    }
+    updateUI();
 }
 
 void ContextPannel::setTarget(FilterLayer* filterObj) {
     m_current_target = nullptr; m_current_text_target = nullptr;
     m_current_image_target = nullptr; m_current_filter_target = filterObj;
-    if (!filterObj) return;
-
-    blockSignals(true);
-    FilterState s = filterObj->getFilterState();
-    m_filter_type_box->setCurrentIndex(m_filter_type_box->findData(static_cast<int>(s.type)));
-    rebuildFilterParamsUI(s.type);
-
-    for (size_t i = 0; i < m_filter_param_boxes.size() && i < s.params.size(); ++i) {
-        m_filter_param_boxes[i]->setValue(s.params[i]);
+    if (filterObj) {
+        blockSignals(true);
+        FilterState s = filterObj->getFilterState();
+        m_filter_type_box->setCurrentIndex(m_filter_type_box->findData(static_cast<int>(s.type)));
+        rebuildFilterParamsUI(s.type);
+        for (size_t i = 0; i < m_filter_param_boxes.size() && i < s.params.size(); ++i) {
+            m_filter_param_boxes[i]->setValue(s.params[i]);
+        }
+        blockSignals(false);
     }
-    blockSignals(false);
+    updateUI();
 }
 
 void ContextPannel::rebuildFilterParamsUI(FilterType type) {

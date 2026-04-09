@@ -5,25 +5,22 @@ RasterizeLayerCommand::RasterizeLayerCommand(Canvas* canvas, int layerId, QUndoC
 {
     Layer* layer = m_canvas->getLayers()[m_layer_id];
 
-    // Копируем сырые указатели в умные (QPointer)
     std::vector<Object*> raw_objects = layer->getObjects();
     m_objects.reserve(raw_objects.size());
     for (Object* obj : raw_objects) {
         m_objects.push_back(QPointer<Object>(obj));
     }
 
-    // Запоминаем предыдущее состояние слоя
     m_was_rasterized = layer->isRasterized();
     m_old_raster_image = layer->getRasterImage();
 
-    // Делаем снимок текущего слоя (вместе со старым растром и новыми объектами)
     m_new_raster_image = m_canvas->renderLayerToImage(m_layer_id);
 }
 
 RasterizeLayerCommand::~RasterizeLayerCommand() {
     if (m_is_active) {
         for (auto& obj : m_objects) {
-            if (obj) delete obj; // <--- Проверяем, жив ли объект
+            if (obj) delete obj;
         }
     }
 }
@@ -31,7 +28,7 @@ RasterizeLayerCommand::~RasterizeLayerCommand() {
 void RasterizeLayerCommand::redo() {
     Layer* layer = m_canvas->getLayers()[m_layer_id];
     for (auto& obj : m_objects) {
-        if (obj) { // <--- Проверяем
+        if (obj) {
             layer->removeObject(obj);
             if (m_canvas->getScene()) m_canvas->getScene()->removeItem(obj);
         }
@@ -47,7 +44,7 @@ void RasterizeLayerCommand::undo() {
     layer->setRasterImage(m_old_raster_image);
 
     for (auto& obj : m_objects) {
-        if (obj) { // <--- Проверяем
+        if (obj) {
             if (m_canvas->getScene()) m_canvas->getScene()->addItem(obj);
             layer->addObject(obj);
         }
@@ -60,7 +57,7 @@ RasterStrokeCommand::RasterStrokeCommand(Layer* layer, const QRect& rect, const 
 
 void RasterStrokeCommand::undo() {
     QPainter p(m_layer->getRasterImagePtr());
-    // ВАЖНО: Режим Source заменяет пиксели 1-в-1 (включая прозрачность), а не накладывает их поверх!
+
     p.setCompositionMode(QPainter::CompositionMode_Source);
     p.drawImage(m_rect.topLeft(), m_old_image);
     m_layer->updateRasterArea(m_rect);

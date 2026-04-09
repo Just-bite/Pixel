@@ -3,6 +3,9 @@
 #include <QStyleOption>
 #include <QMouseEvent>
 #include <QScrollBar>
+#include <QIcon>
+
+#define RESOURCE_PATH_PREFIX ":/application_icon/resources/"
 
 LayerWidget::LayerWidget(QWidget* parent) : QWidget(parent) {
     setFixedHeight(32);
@@ -12,11 +15,30 @@ LayerWidget::LayerWidget(QWidget* parent) : QWidget(parent) {
     m_layout->setSpacing(3);
     m_layout->setContentsMargins(2, 2, 2, 2);
 
-    m_lock_btn = new QPushButton("L"); m_lock_btn->setCheckable(true);
-    m_eye_btn = new QPushButton("V");  m_eye_btn->setCheckable(true);
-    m_up_btn = new QPushButton("u");
-    m_down_btn = new QPushButton("d");
-    m_delete_btn = new QPushButton("-");
+    m_lock_btn = new QPushButton();
+    QIcon lockIcon;
+    setIsFilter(false);
+
+    m_eye_btn = new QPushButton();
+    m_eye_btn->setCheckable(true);
+    QIcon eyeIcon;
+    eyeIcon.addFile(RESOURCE_PATH_PREFIX "eye-opened.svg", QSize(), QIcon::Normal, QIcon::Off);
+    eyeIcon.addFile(RESOURCE_PATH_PREFIX "eye-closed.svg",  QSize(), QIcon::Normal, QIcon::On);
+    m_eye_btn->setIcon(eyeIcon);
+    m_eye_btn->setToolTip("Toggle visibility");
+
+    m_up_btn = new QPushButton();
+    m_up_btn->setIcon(QIcon(RESOURCE_PATH_PREFIX "up-arrow.svg"));
+    m_up_btn->setToolTip("Move layer up");
+
+    m_down_btn = new QPushButton();
+    m_down_btn->setIcon(QIcon(RESOURCE_PATH_PREFIX "down-arrow.svg"));
+    m_down_btn->setToolTip("Move layer down");
+
+    m_delete_btn = new QPushButton();
+    m_delete_btn->setIcon(QIcon(RESOURCE_PATH_PREFIX "trash-bin.svg"));
+    m_delete_btn->setToolTip("Delete layer");
+
 
     for (QPushButton* b : {m_lock_btn, m_eye_btn, m_down_btn, m_up_btn, m_delete_btn}) {
         b->setFixedSize(BTN_SIZE, BTN_SIZE);
@@ -55,19 +77,21 @@ void LayerWidget::setName(const QString& name) {
 
 void LayerWidget::setIsFilter(bool isF) {
     if (isF) {
-        m_lock_btn->setText("⚙");
-        m_lock_btn->setStyleSheet("font-weight: bold; color: #4a6b8f;");
-        m_lock_btn->setCheckable(false); // Для фильтра это кнопка настроек
-
-        // ИСПРАВЛЕНИЕ: Отвязываем старый тумблер и привязываем клик по ⚙ к выбору слоя
-        m_lock_btn->disconnect();
-        connect(m_lock_btn, &QPushButton::clicked, this, &LayerWidget::layerClicked);
-    } else {
-        m_lock_btn->setText("L");
-        m_lock_btn->setStyleSheet("");
+        m_lock_btn->setIcon(QIcon(RESOURCE_PATH_PREFIX "mask-happy.svg"));
         m_lock_btn->setCheckable(true);
+        m_lock_btn->setToolTip("Edit filter mask");
 
-        // Возвращаем стандартное поведение замка для обычного слоя
+        m_lock_btn->disconnect();
+        connect(m_lock_btn, &QPushButton::toggled, this, &LayerWidget::onMaskToggled);
+    } else {
+        QIcon lockIcon;
+        m_lock_btn->setCheckable(true);
+        lockIcon.addFile(RESOURCE_PATH_PREFIX "lock-opened.svg", QSize(), QIcon::Normal, QIcon::Off);
+        lockIcon.addFile(RESOURCE_PATH_PREFIX "lock-closed.svg",  QSize(), QIcon::Normal, QIcon::On);
+        m_lock_btn->setIcon(lockIcon);
+        m_lock_btn->setCheckable(true);
+        m_lock_btn->setToolTip("Toggle lock");
+
         m_lock_btn->disconnect();
         connect(m_lock_btn, &QPushButton::toggled, this, &LayerWidget::onLockedToggled);
     }
@@ -85,8 +109,15 @@ void LayerWidget::setSelected(bool selected) {
 }
 void LayerWidget::setVisibleState(bool visible) { m_eye_btn->blockSignals(true); m_eye_btn->setChecked(!visible); m_eye_btn->blockSignals(false); }
 void LayerWidget::setLockedState(bool locked) { m_lock_btn->blockSignals(true); m_lock_btn->setChecked(locked); m_lock_btn->blockSignals(false); }
+void LayerWidget::setMaskState(bool active) {
+    m_lock_btn->blockSignals(true);
+    m_lock_btn->setChecked(active);
+    m_lock_btn->blockSignals(false);
+}
+
 void LayerWidget::onVisibleToggled(bool checked) { emit visibleToggled(!checked); } 
 void LayerWidget::onLockedToggled(bool checked) { emit lockedToggled(checked); }
+void LayerWidget::onMaskToggled(bool checked) { emit maskToggled(checked); }
 void LayerWidget::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) emit layerClicked();
     QWidget::mousePressEvent(event);
@@ -138,6 +169,11 @@ LayersPannel::LayersPannel(QWidget *parent, Canvas* canvas) : QWidget(parent), m
 
     connect(m_new_layer_btn, &QPushButton::clicked, this, &LayersPannel::onNewLayerClicked);
     connect(m_new_filter_btn, &QPushButton::clicked, this, &LayersPannel::onNewFilterClicked);
+    connect(m_canvas_ptr, &Canvas::maskEditingChanged, this, [this](int id, bool active){
+        for (LayerWidget* lw : m_layers) {
+            if (lw->getIndex() == id) lw->setMaskState(active);
+        }
+    });
     updateLayers();
 }
 
@@ -156,7 +192,12 @@ void LayersPannel::updateLayers() {
         lw->setIndex(index);
         lw->setIsFilter(i->isFilter);
         lw->setVisibleState(i->visible);
-        lw->setLockedState(i->locked);
+
+        if (i->isFilter) {
+            lw->setMaskState(m_canvas_ptr->getMaskEditLayerId() == index);
+        } else {
+            lw->setLockedState(i->locked);
+        }
 
         if (index == selectedIdx) lw->setSelected(true);
 
@@ -166,6 +207,9 @@ void LayersPannel::updateLayers() {
         connect(lw, &LayerWidget::layerClicked, this, &LayersPannel::onLayerClicked);
         connect(lw, &LayerWidget::visibleToggled, this, &LayersPannel::onLayerVisibleToggled);
         connect(lw, &LayerWidget::lockedToggled, this, &LayersPannel::onLayerLockedToggled);
+        connect(lw, &LayerWidget::maskToggled, this, [this, index](bool active){
+            m_canvas_ptr->setMaskEditingMode(index, active);
+        });
         connect(lw, &LayerWidget::nameChanged, this, &LayersPannel::onLayerNameChanged);
 
         m_layers.push_back(lw);

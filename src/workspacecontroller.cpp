@@ -1,11 +1,3 @@
-#include "include/workspacecontroller.h"
-#include "include/action.h"
-#include "include/raster_action.h"
-#include "include/projectmanager.h"
-#include "include/contextpannel.h"
-#include "include/palettepannel.h"
-#include "include/layerspannel.h"
-
 #include <QApplication>
 #include <QClipboard>
 #include <QMimeData>
@@ -16,7 +8,15 @@
 #include <QLabel>
 #include <QCheckBox>
 #include <QDialogButtonBox>
+#include <qmath.h>
 
+#include "include/workspacecontroller.h"
+#include "include/action.h"
+#include "include/raster_action.h"
+#include "include/projectmanager.h"
+#include "include/contextpannel.h"
+#include "include/palettepannel.h"
+#include "include/layerspannel.h"
 
 WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* parent)
     : QObject(parent), m_context(ctx)
@@ -32,6 +32,7 @@ WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* p
     m_tools[InstrumentType::PENCIL].reset(new PencilTool(this));
     m_tools[InstrumentType::ERASER].reset(new EraserTool(this));
     m_tools[InstrumentType::FILL].reset(new FillTool(this));
+    m_tools[InstrumentType::PIPETTE].reset(new PipetteTool(this));
 
     if (m_context.view) {
         m_context.view->installEventFilter(this);
@@ -68,6 +69,10 @@ WorkspaceController::WorkspaceController(const WorkspaceContext& ctx, QObject* p
 void WorkspaceController::setCurrentTool(InstrumentType type) {
     if (m_active_tool) m_active_tool->onDeactivate(m_context);
 
+    if (m_current_tool_type != type) {
+        m_previous_tool_type = m_current_tool_type;
+    }
+
     m_current_tool_type = type;
     if (m_tools.find(type) != m_tools.end()) {
         m_active_tool = m_tools[type].get();
@@ -75,7 +80,30 @@ void WorkspaceController::setCurrentTool(InstrumentType type) {
         m_active_tool = m_tools[InstrumentType::POINTER].get();
     }
 
+    // Синхронизация UI
+    if (m_context.instrumentPannel) {
+        m_context.instrumentPannel->setActiveTool(type);
+    }
+
+    QString toolName;
+    switch(type) {
+    case InstrumentType::POINTER: toolName = "Pointer"; break;
+    case InstrumentType::HAND: toolName = "Hand"; break;
+    case InstrumentType::FIGURE: toolName = "Figure"; break;
+    case InstrumentType::TEXT: toolName = "Text"; break;
+    case InstrumentType::PENCIL: toolName = "Pencil"; break;
+    case InstrumentType::ERASER: toolName = "Eraser"; break;
+    case InstrumentType::FILL: toolName = "Fill Bucket"; break;
+    case InstrumentType::PIPETTE: toolName = "Pipette"; break;
+    default: toolName = "Unknown";
+    }
+    emit statusMessage(QString("Tool selected: %1").arg(toolName));
+
     if (m_active_tool) m_active_tool->onActivate(m_context);
+}
+
+void WorkspaceController::revertToPreviousTool() {
+    setCurrentTool(m_previous_tool_type);
 }
 
 void WorkspaceController::updateTransformBoxScale() {
@@ -85,29 +113,63 @@ void WorkspaceController::updateTransformBoxScale() {
 bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
     if (!m_context.view || !m_context.projectManager) return QObject::eventFilter(obj, event);
 
-    // Временное переключение на руку по пробелу (очень элегантный паттерн)
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent *kEvent = static_cast<QKeyEvent *>(event);
-        if (kEvent->key() == Qt::Key_Space && !kEvent->isAutoRepeat()) {
-            m_previous_tool_type = m_current_tool_type;
+        if (kEvent->key() == Qt::Key_Space && !kEvent->isAutoRepeat() && m_current_tool_type != InstrumentType::HAND) {
             setCurrentTool(InstrumentType::HAND);
+            return true;
+        }
+        if (kEvent->key() == Qt::Key_Alt && !kEvent->isAutoRepeat() && m_current_tool_type != InstrumentType::PIPETTE) {
+            setCurrentTool(InstrumentType::PIPETTE);
             return true;
         }
     } else if (event->type() == QEvent::KeyRelease) {
         QKeyEvent *kEvent = static_cast<QKeyEvent *>(event);
-        if (kEvent->key() == Qt::Key_Space && !kEvent->isAutoRepeat()) {
-            setCurrentTool(m_previous_tool_type);
+        if (kEvent->key() == Qt::Key_Space && !kEvent->isAutoRepeat() && m_current_tool_type == InstrumentType::HAND) {
+            revertToPreviousTool();
+            return true;
+        }
+        if (kEvent->key() == Qt::Key_Alt && !kEvent->isAutoRepeat() && m_current_tool_type == InstrumentType::PIPETTE) {
+            revertToPreviousTool();
             return true;
         }
     }
 
-    // Роутинг событий мыши
     if (obj == m_context.view->viewport() || obj == m_context.view) {
         if (event->type() == QEvent::Wheel) {
             QWheelEvent *wEvent = static_cast<QWheelEvent *>(event);
-            m_context.view->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-            double factor = (wEvent->angleDelta().y() > 0) ? 1.15 : (1.0 / 1.15);
+            double delta = wEvent->angleDelta().y();
+            if (delta == 0) return true;
+
+            m_context.view->setTransformationAnchor(QGraphicsView::NoAnchor);
+            QPointF targetScenePos = m_context.view->mapToScene(wEvent->pos());
+
+            double factor = qPow(1.15, delta / 120.0);
+
+            Canvas* canvas = m_context.projectManager->GetCurrentCanvas();
+            double cw = canvas ? canvas->getSize().width() : 800;
+            double ch = canvas ? canvas->getSize().height() : 600;
+            double vw = m_context.view->viewport()->width();
+            double vh = m_context.view->viewport()->height();
+
+            double minScaleW = vw / (10.0 * qMax(1.0, cw));
+            double minScaleH = vh / (10.0 * qMax(1.0, ch));
+            double minScale = qMin(minScaleW, minScaleH);
+            if (minScale <= 0) minScale = 0.01;
+            double maxScale = 150.0;
+
+            double currentScale = m_context.view->transform().m11();
+            double newScale = currentScale * factor;
+
+            if (newScale < minScale) factor = minScale / currentScale;
+            if (newScale > maxScale) factor = maxScale / currentScale;
+
             m_context.view->scale(factor, factor);
+
+            QPointF newScenePos = m_context.view->mapToScene(wEvent->pos());
+            QPointF moveDelta = newScenePos - targetScenePos;
+            m_context.view->translate(moveDelta.x(), moveDelta.y());
+
             updateTransformBoxScale();
             emit viewportChanged();
             return true;
@@ -127,7 +189,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
         }
     }
 
-    // Глобальные шорткаты
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent *kEvent = static_cast<QKeyEvent *>(event);
         if (kEvent->modifiers() & Qt::ControlModifier) {
@@ -142,7 +203,6 @@ bool WorkspaceController::eventFilter(QObject *obj, QEvent *event) {
         if (m_active_tool && m_active_tool->keyPressEvent(kEvent, m_context)) return true;
     }
 
-    // Drag & Drop
     if (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove) {
         QDragMoveEvent *dEvent = static_cast<QDragMoveEvent*>(event);
         if (dEvent->mimeData()->hasImage() || dEvent->mimeData()->hasUrls()) {
@@ -183,12 +243,10 @@ void WorkspaceController::handlePaste() {
     int activeId = canvas->getSelectedLayerid();
     if (activeId < 0 || canvas->getLayersInfo()[activeId].locked || canvas->getLayersInfo()[activeId].isFilter) return;
 
-    // Вставка из ОС
     const QClipboard *clipboard = QApplication::clipboard();
     const QMimeData *mimeData = clipboard->mimeData();
     QImage img;
 
-    // ВОЗВРАЩАЕМ ПОТЕРЯННУЮ ПРОВЕРКУ НА ФАЙЛЫ ИЗ ПРОВОДНИКА
     if (mimeData->hasImage()) {
         img = qvariant_cast<QImage>(mimeData->imageData());
     } else if (mimeData->hasUrls()) {
@@ -213,7 +271,6 @@ void WorkspaceController::handlePaste() {
         return;
     }
 
-    // Вставка из внутреннего буфера
     if (m_clipboard_type != ClipboardType::None) {
         m_context.scene->clearSelection();
         QPointF centerPos = m_context.view->mapToScene(m_context.view->viewport()->rect().center());
@@ -232,7 +289,6 @@ void WorkspaceController::handlePaste() {
         }
     }
 }
-
 
 void WorkspaceController::handleDrop(QDropEvent* event) {
     Canvas* canvas = m_context.projectManager->GetCurrentCanvas();
@@ -276,8 +332,6 @@ void WorkspaceController::onActiveLayerChanged(int id) {
     if (id >= 0 && canvas->getLayers()[id]->isFilter()) {
         m_context.scene->clearSelection();
         m_context.contextPannel->setTarget(static_cast<FilterLayer*>(canvas->getLayers()[id]));
-        // ИСПРАВЛЕНИЕ: Добавили 6й параметр для setMode
-        m_context.contextPannel->setMode(false, false, false, false, false, false, "Filter Properties");
     } else {
         setCurrentTool(m_current_tool_type);
         onSelectionChanged();
@@ -306,7 +360,7 @@ void WorkspaceController::onContextPropertyChanged() {
         FigureState newState = m_context.contextPannel->getUIState(oldState);
         if (oldState != newState) {
             m_undo_stack->push(new ModifyFigureCommand(fig, oldState, newState));
-            m_context.contextPannel->setTarget(fig); // Обновляем инпуты, чтобы убрать артефакты ввода
+            m_context.contextPannel->setTarget(fig);
         }
     } else if (TextObject* txt = dynamic_cast<TextObject*>(obj)) {
         TextState oldState = txt->getState();
@@ -327,7 +381,10 @@ void WorkspaceController::onContextPropertyChanged() {
     if (m_active_tool) m_active_tool->onObjectModified(m_context);
 }
 
-void WorkspaceController::onColorTargetChanged(bool isFill) { m_color_target_is_fill = isFill; m_context.palettePannel->setColor(m_context.contextPannel->getActiveColor()); }
+void WorkspaceController::onColorTargetChanged(bool isFill) {
+    m_color_target_is_fill = isFill;
+    m_context.palettePannel->setColor(m_context.contextPannel->getActiveColor());
+}
 
 void WorkspaceController::onColorPickedPreview(const QColor& color) {
     QList<QGraphicsItem*> selected = m_context.scene->selectedItems();
@@ -350,10 +407,14 @@ void WorkspaceController::onColorPickedCommit(const QColor& color) {
     if (!selected.isEmpty()) {
         if (Figure* fig = dynamic_cast<Figure*>(selected.first())) {
             FigureState newState = fig->getState();
+            if (m_color_target_is_fill) newState.fill = color; else newState.stroke = color;
+
             if (m_is_previewing) { fig->setState(m_state_before_preview); m_is_previewing = false; }
             m_undo_stack->push(new ModifyFigureCommand(fig, fig->getState(), newState));
         } else if (TextObject* txt = dynamic_cast<TextObject*>(selected.first())) {
             TextState newState = txt->getState();
+            newState.color = color;
+
             if (m_is_previewing) { txt->setState(m_text_state_before_preview); m_is_previewing = false; }
             m_undo_stack->push(new ModifyTextCommand(txt, txt->getState(), newState));
         }
@@ -398,21 +459,28 @@ RasterizeResult WorkspaceController::prepareRasterLayer() {
     if (activeId < 0) return RasterizeResult::Cancelled;
 
     Layer* layer = canvas->getLayers()[activeId];
-    if (layer->isFilter()) return RasterizeResult::Cancelled;
+
+    if (layer->isFilter()) {
+        if (canvas->getMaskEditLayerId() == activeId) {
+            if (layer->getRasterImage().isNull() || layer->getRasterImage().width() == 0) {
+                QImage mask(canvas->getSize(), QImage::Format_ARGB32_Premultiplied);
+                mask.fill(Qt::white);
+                layer->setRasterImage(mask);
+            }
+            return RasterizeResult::Ready;
+        }
+        return RasterizeResult::Cancelled;
+    }
 
     bool hasVectors = !layer->getObjects().empty();
 
-    // Сценарий 1: Уже растр и нет векторов поверх -> Рисуем
     if (layer->isRasterized() && !hasVectors) return RasterizeResult::Ready;
 
-    // Сценарий 2: Слой абсолютно пустой (новый) -> Молча растрируем и Рисуем
     if (!layer->isRasterized() && !hasVectors) {
         m_undo_stack->push(new RasterizeLayerCommand(canvas, activeId));
-        // ИСПРАВЛЕНИЕ: Возвращаем RasterizedNow, чтобы заблокировать первый мазок!
         return RasterizeResult::RasterizedNow;
     }
 
-    // Сценарий 3: На слое есть векторы. Спрашиваем.
     Project* proj = m_context.projectManager->getCurrentProject();
     if (proj->getAskRasterize()) {
         QDialog dlg;
@@ -433,6 +501,5 @@ RasterizeResult WorkspaceController::prepareRasterLayer() {
     m_undo_stack->push(new RasterizeLayerCommand(canvas, activeId));
     m_context.scene->clearSelection();
 
-    // Возвращаем RasterizedNow, чтобы заблокировать первый мазок и избежать скачка!
     return RasterizeResult::RasterizedNow;
 }

@@ -8,6 +8,7 @@
 class ProjectManager;
 class ContextPannel;
 class PalettePannel;
+class InstrumentPannel;
 class LayersPannel;
 class WorkspaceController;
 
@@ -20,6 +21,7 @@ struct WorkspaceContext {
     LayersPannel* layersPannel = nullptr;
     QUndoStack* undoStack = nullptr;
     WorkspaceController* controller = nullptr;
+    InstrumentPannel* instrumentPannel = nullptr;
 };
 
 #endif // WORKSPACECONTEXT_H

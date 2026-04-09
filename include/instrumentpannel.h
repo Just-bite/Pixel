@@ -18,6 +18,7 @@ enum class InstrumentType
     HAND,
     TEXT,
     FIGURE,
+    PIPETTE // <-- ПЕРЕИМЕНОВАНО
 };
 
 class InstrumentPannel : public QWidget
@@ -26,6 +27,7 @@ class InstrumentPannel : public QWidget
 public:
     explicit InstrumentPannel(QWidget* parent = nullptr);
     const QVBoxLayout& getLayout() const;
+    void setActiveTool(InstrumentType type);
 
 signals:
     void instrumentSelected(InstrumentType type);

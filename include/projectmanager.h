@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QString>
 #include <vector>
+#include <QMessageBox>
 #include "project.h"
 
 class ProjectManager : public QWidget {
@@ -14,10 +15,17 @@ public:
     Project* getCurrentProject() { return m_selected_project; }
     void createProject();
 
+    bool promptSaveIfModified();
+    void setModified(bool modified) { m_is_modified = modified; }
+    QString getCurrentFilePath() const { return m_current_file_path; }
+
 signals:
     void projectAboutToClose();
     void projectLoaded();
     void layersUpdated();
+
+    void statusMessage(const QString& msg);
+    void projectSaved();
 
 public slots:
     bool createFile();
@@ -33,6 +41,7 @@ private:
     std::vector<Project*> m_projects;
     Project* m_selected_project;
     QString m_current_file_path;
+    bool m_is_modified = false;
 };
 
 #endif // PROJECTMANAGER_H
